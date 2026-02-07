@@ -10,6 +10,7 @@
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactWebChat, { createDirectLine, createStore } from 'botframework-webchat';
+import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -411,6 +412,8 @@ export default function MiddlewareCustomUIDemo() {
             directLine={directLine}
             store={store}
             activityMiddleware={activityMiddleware}
+            adaptiveCardsHostConfig={adaptiveCardsHostConfig}
+            locale="en-GB"
             styleOptions={styleOptions}
           />
         )}

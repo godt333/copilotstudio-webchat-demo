@@ -4,9 +4,10 @@
  * The simplest React integration. Single component, pass directLine connection
  * and styleOptions. Quick setup for basic React apps.
  */
-import { useRef, useEffect, useState } from 'react';
-import ReactWebChat from 'botframework-webchat';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import ReactWebChat, { createStore } from 'botframework-webchat';
 import type { CopilotStudioWebChatConnection } from '@microsoft/agents-copilotstudio-client';
+import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -18,6 +19,21 @@ import { CodeBlockWithModal } from '../../components/common/CodeModal';
 function SingleMountWebChat({ connection }: { connection: CopilotStudioWebChatConnection }) {
   const [mounted, setMounted] = useState(false);
   const mountedRef = useRef(false);
+
+  // Create store with logging middleware
+  const store = useMemo(() => createStore({}, () => (next: (action: { type: string; payload?: { activity?: { type?: string; attachments?: Array<{ contentType?: string }>; text?: string } } }) => unknown) => (action: { type: string; payload?: { activity?: { type?: string; attachments?: Array<{ contentType?: string }>; text?: string } } }) => {
+    if (action.type === 'DIRECT_LINE/INCOMING_ACTIVITY') {
+      const activity = action.payload?.activity;
+      console.log('[AgentSDK Demo] Received:', {
+        type: activity?.type,
+        hasAttachments: !!activity?.attachments?.length,
+        attachmentTypes: activity?.attachments?.map(a => a.contentType),
+        text: activity?.text?.substring(0, 100),
+        fullActivity: activity
+      });
+    }
+    return next(action);
+  }), []);
 
   useEffect(() => {
     if (!mountedRef.current) {
@@ -31,6 +47,9 @@ function SingleMountWebChat({ connection }: { connection: CopilotStudioWebChatCo
   return (
     <ReactWebChat
       directLine={connection}
+      store={store}
+      adaptiveCardsHostConfig={adaptiveCardsHostConfig}
+      locale="en-GB"
       styleOptions={{
         bubbleFromUserBackground: '#0078D4',
         bubbleFromUserTextColor: 'white',

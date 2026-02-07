@@ -8,6 +8,7 @@
  */
 import { useState, useEffect } from 'react';
 import ReactWebChat, { createDirectLine } from 'botframework-webchat';
+import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -192,7 +193,8 @@ export default function SimpleReactWebChatDemo() {
           <ReactWebChat
             directLine={createDirectLine({ token })}
             userID={`user-${Math.random().toString(36).substr(2, 9)}`}
-            locale="en-US"
+            adaptiveCardsHostConfig={adaptiveCardsHostConfig}
+            locale="en-GB"
           />
         )}
       </div>

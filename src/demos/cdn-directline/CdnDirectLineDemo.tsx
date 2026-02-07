@@ -11,6 +11,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import ReactWebChat, { createDirectLine } from 'botframework-webchat';
+import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -202,6 +203,8 @@ export default function CdnDirectLineDemo() {
           <ReactWebChat
             directLine={directLine}
             styleOptions={styleOptions}
+            adaptiveCardsHostConfig={adaptiveCardsHostConfig}
+            locale="en-GB"
           />
         )}
       </div>

@@ -18,6 +18,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import ReactWebChat from 'botframework-webchat';
 import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
 import type { CopilotStudioWebChatConnection } from '@microsoft/agents-copilotstudio-client';
+import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -137,6 +138,7 @@ function FluentThemedWebChat({
     <FluentThemeProvider>
       <ReactWebChat
         directLine={connection}
+        adaptiveCardsHostConfig={adaptiveCardsHostConfig}
         styleOptions={styleOptions}
       />
     </FluentThemeProvider>

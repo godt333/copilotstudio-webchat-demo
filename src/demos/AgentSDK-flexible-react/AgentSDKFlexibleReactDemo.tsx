@@ -4,10 +4,11 @@
  * Production-ready with Microsoft styling. Separates context provider (Composer)
  * from UI (BasicWebChat), enabling FluentThemeProvider for Teams/M365 look.
  */
-import { useRef, useEffect, useState } from 'react';
-import ReactWebChat from 'botframework-webchat';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import ReactWebChat, { createStore } from 'botframework-webchat';
 import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
 import type { CopilotStudioWebChatConnection } from '@microsoft/agents-copilotstudio-client';
+import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -19,6 +20,21 @@ import { CodeBlockWithModal } from '../../components/common/CodeModal';
 function SingleMountFluentWebChat({ connection }: { connection: CopilotStudioWebChatConnection }) {
   const [mounted, setMounted] = useState(false);
   const mountedRef = useRef(false);
+
+  // Create store with logging middleware
+  const store = useMemo(() => createStore({}, () => (next: (action: { type: string; payload?: { activity?: { type?: string; attachments?: Array<{ contentType?: string }>; text?: string } } }) => unknown) => (action: { type: string; payload?: { activity?: { type?: string; attachments?: Array<{ contentType?: string }>; text?: string } } }) => {
+    if (action.type === 'DIRECT_LINE/INCOMING_ACTIVITY') {
+      const activity = action.payload?.activity;
+      console.log('[AgentSDK Flexible Demo] Received:', {
+        type: activity?.type,
+        hasAttachments: !!activity?.attachments?.length,
+        attachmentTypes: activity?.attachments?.map(a => a.contentType),
+        text: activity?.text?.substring(0, 100),
+        fullActivity: activity
+      });
+    }
+    return next(action);
+  }), []);
 
   useEffect(() => {
     if (!mountedRef.current) {
@@ -33,6 +49,9 @@ function SingleMountFluentWebChat({ connection }: { connection: CopilotStudioWeb
     <FluentThemeProvider>
       <ReactWebChat
         directLine={connection}
+        store={store}
+        adaptiveCardsHostConfig={adaptiveCardsHostConfig}
+        locale="en-GB"
         styleOptions={{
           hideUploadButton: true,
         }}
