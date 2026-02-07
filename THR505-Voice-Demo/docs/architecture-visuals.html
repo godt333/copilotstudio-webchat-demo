@@ -1,0 +1,2280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THR505 Voice Demo - Architecture Deep Dive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --azure-blue: #0078d4;
+            --azure-dark: #106ebe;
+            --azure-light: #50a3e5;
+            --copilot-purple: #742774;
+            --copilot-light: #9b4d9b;
+            --success-green: #00a878;
+            --warning-orange: #ff8c00;
+            --error-red: #e74c3c;
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-elevated: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --gradient-azure: linear-gradient(135deg, #0078d4, #50a3e5);
+            --gradient-copilot: linear-gradient(135deg, #742774, #9b4d9b);
+            --gradient-success: linear-gradient(135deg, #00a878, #00d9a0);
+            --glass-bg: rgba(22, 27, 34, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(0, 120, 212, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(116, 39, 116, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(0, 168, 120, 0.1) 0%, transparent 40%);
+            animation: bgPulse 20s ease-in-out infinite;
+        }
+
+        @keyframes bgPulse {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-5%, 5%) scale(1.05); }
+            66% { transform: translate(5%, -5%) scale(0.95); }
+        }
+
+        /* Header */
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--gradient-azure);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 120, 212, 0.4);
+        }
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary), var(--azure-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text span {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.75rem 1.25rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--azure-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Hero Stats */
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-azure);
+        }
+
+        .stat-card:nth-child(2)::before {
+            background: var(--gradient-copilot);
+        }
+
+        .stat-card:nth-child(3)::before {
+            background: var(--gradient-success);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card:nth-child(1) .stat-value { color: var(--azure-light); }
+        .stat-card:nth-child(2) .stat-value { color: var(--copilot-light); }
+        .stat-card:nth-child(3) .stat-value { color: var(--success-green); }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-description {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Architecture Cards */
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .arch-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .arch-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+            border-color: var(--azure-blue);
+        }
+
+        .arch-card-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .arch-card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .arch-card:nth-child(1) .arch-card-icon { background: var(--gradient-azure); }
+        .arch-card:nth-child(2) .arch-card-icon { background: var(--gradient-copilot); }
+        .arch-card:nth-child(3) .arch-card-icon { background: var(--gradient-success); }
+
+        .arch-card-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        .arch-card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .arch-card-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .arch-card-body {
+            padding: 1.5rem 2rem;
+        }
+
+        .arch-card-diagram {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .arch-specs {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .arch-spec {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--bg-elevated);
+            border-radius: 8px;
+        }
+
+        .arch-spec-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .arch-spec-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .arch-spec-value.latency-low { color: var(--success-green); }
+        .arch-spec-value.latency-medium { color: var(--warning-orange); }
+        .arch-spec-value.complexity-high { color: var(--error-red); }
+        .arch-spec-value.complexity-medium { color: var(--warning-orange); }
+        .arch-spec-value.complexity-low { color: var(--success-green); }
+
+        /* Comparison Table */
+        .comparison-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .comparison-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comparison-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--azure-blue);
+            border-color: var(--azure-blue);
+            color: white;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            background: var(--bg-elevated);
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-table th:first-child {
+            width: 200px;
+        }
+
+        .comparison-table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .comparison-table tr:hover td {
+            background: var(--bg-elevated);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .feature-name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .feature-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feature-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--text-secondary);
+        }
+
+        .check-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+
+        .check-icon.yes {
+            background: rgba(0, 168, 120, 0.2);
+            color: var(--success-green);
+        }
+
+        .check-icon.no {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--error-red);
+        }
+
+        .check-icon.partial {
+            background: rgba(255, 140, 0, 0.2);
+            color: var(--warning-orange);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-azure {
+            background: rgba(0, 120, 212, 0.2);
+            color: var(--azure-light);
+        }
+
+        .badge-success {
+            background: rgba(0, 168, 120, 0.2);
+            color: var(--success-green);
+        }
+
+        .badge-warning {
+            background: rgba(255, 140, 0, 0.2);
+            color: var(--warning-orange);
+        }
+
+        .badge-error {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--error-red);
+        }
+
+        /* Flow Diagram */
+        .flow-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .flow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .flow-tabs {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-dark);
+            padding: 0.5rem;
+            border-radius: 12px;
+        }
+
+        .flow-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .flow-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .flow-tab.active {
+            background: var(--azure-blue);
+            color: white;
+        }
+
+        .flow-diagram {
+            position: relative;
+            padding: 2rem;
+            background: var(--bg-dark);
+            border-radius: 16px;
+            overflow-x: auto;
+        }
+
+        /* SVG Diagram Styles */
+        .diagram-svg {
+            width: 100%;
+            min-height: 400px;
+        }
+
+        .diagram-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .diagram-node:hover {
+            filter: brightness(1.1);
+        }
+
+        .node-box {
+            rx: 12;
+            ry: 12;
+            stroke-width: 2;
+        }
+
+        .node-azure { fill: rgba(0, 120, 212, 0.3); stroke: var(--azure-blue); }
+        .node-copilot { fill: rgba(116, 39, 116, 0.3); stroke: var(--copilot-purple); }
+        .node-server { fill: rgba(0, 168, 120, 0.3); stroke: var(--success-green); }
+        .node-client { fill: rgba(80, 163, 229, 0.3); stroke: var(--azure-light); }
+
+        .node-label {
+            fill: var(--text-primary);
+            font-size: 12px;
+            font-weight: 600;
+            text-anchor: middle;
+        }
+
+        .node-sublabel {
+            fill: var(--text-secondary);
+            font-size: 10px;
+            text-anchor: middle;
+        }
+
+        .flow-line {
+            stroke: var(--border-color);
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+
+        .flow-line.animated {
+            stroke-dasharray: 8 4;
+            animation: flowDash 1s linear infinite;
+        }
+
+        @keyframes flowDash {
+            to { stroke-dashoffset: -12; }
+        }
+
+        .flow-line.highlight-azure { stroke: var(--azure-blue); }
+        .flow-line.highlight-success { stroke: var(--success-green); }
+
+        .flow-label {
+            fill: var(--text-muted);
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Latency Timeline */
+        .latency-container {
+            margin-top: 3rem;
+        }
+
+        .latency-header {
+            margin-bottom: 2rem;
+        }
+
+        .latency-header h4 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .latency-comparison {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .latency-row {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .latency-row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .latency-row-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .latency-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .latency-dot.azure { background: var(--azure-blue); }
+        .latency-dot.copilot { background: var(--copilot-purple); }
+        .latency-dot.success { background: var(--success-green); }
+
+        .latency-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+        }
+
+        .latency-bar-container {
+            height: 40px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        .latency-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .latency-segment:hover {
+            filter: brightness(1.2);
+        }
+
+        .latency-segment::after {
+            content: attr(data-label);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .latency-segment:hover::after {
+            opacity: 1;
+        }
+
+        .segment-capture { background: #3498db; }
+        .segment-network { background: #9b59b6; }
+        .segment-stt { background: #e74c3c; }
+        .segment-bot { background: #f39c12; }
+        .segment-tts { background: #1abc9c; }
+        .segment-response { background: #2ecc71; }
+
+        .latency-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* Authentication Flow */
+        .auth-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .auth-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .auth-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-methods {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .auth-method {
+            padding: 2rem;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .auth-method:last-child {
+            border-right: none;
+        }
+
+        .auth-method-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .auth-method-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-method-icon.recommended {
+            background: var(--gradient-success);
+        }
+
+        .auth-method-icon.legacy {
+            background: var(--gradient-azure);
+        }
+
+        .auth-method-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .auth-method-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        .auth-method-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: var(--success-green);
+            color: white;
+            font-weight: 600;
+        }
+
+        .auth-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .auth-step {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .auth-step-number {
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .auth-step-content h5 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .auth-step-content p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .auth-step-content code {
+            display: block;
+            margin-top: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--azure-light);
+            overflow-x: auto;
+        }
+
+        /* Token Lifecycle */
+        .token-lifecycle {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .token-state {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .token-state::after {
+            content: '→';
+            position: absolute;
+            right: -1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.5rem;
+        }
+
+        .token-state:last-child::after {
+            display: none;
+        }
+
+        .token-state-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .token-state:nth-child(1) .token-state-icon { background: rgba(0, 120, 212, 0.2); color: var(--azure-light); }
+        .token-state:nth-child(2) .token-state-icon { background: rgba(0, 168, 120, 0.2); color: var(--success-green); }
+        .token-state:nth-child(3) .token-state-icon { background: rgba(255, 140, 0, 0.2); color: var(--warning-orange); }
+        .token-state:nth-child(4) .token-state-icon { background: rgba(0, 120, 212, 0.2); color: var(--azure-light); }
+
+        .token-state-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .token-state-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Code Blocks */
+        .code-container {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            padding: 0.75rem 1rem;
+            background: var(--bg-elevated);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-filename {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .code-copy {
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .code-copy:hover {
+            background: var(--azure-blue);
+            border-color: var(--azure-blue);
+            color: white;
+        }
+
+        .code-block {
+            padding: 1rem 1.5rem;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .code-comment { color: var(--text-muted); }
+        .code-keyword { color: #ff79c6; }
+        .code-string { color: #f1fa8c; }
+        .code-function { color: #8be9fd; }
+        .code-variable { color: #bd93f9; }
+
+        /* Environment Variables Table */
+        .env-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .env-table th {
+            padding: 1rem;
+            text-align: left;
+            background: var(--bg-elevated);
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .env-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875rem;
+        }
+
+        .env-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .env-name {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--azure-light);
+        }
+
+        .env-solution {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* Troubleshooting Accordion */
+        .troubleshoot-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .troubleshoot-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .troubleshoot-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .troubleshoot-header:hover {
+            background: var(--bg-elevated);
+        }
+
+        .troubleshoot-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .troubleshoot-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--error-red);
+            border-radius: 4px;
+        }
+
+        .troubleshoot-desc {
+            font-weight: 500;
+        }
+
+        .troubleshoot-toggle {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .troubleshoot-item.open .troubleshoot-toggle {
+            transform: rotate(180deg);
+        }
+
+        .troubleshoot-content {
+            padding: 0 1.5rem 1.5rem;
+            display: none;
+        }
+
+        .troubleshoot-item.open .troubleshoot-content {
+            display: block;
+        }
+
+        .troubleshoot-steps {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .troubleshoot-step {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .troubleshoot-step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-arrow {
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .step-text {
+            font-size: 0.875rem;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 4rem;
+            padding: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--azure-light);
+        }
+
+        .footer-link svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .arch-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .hero-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .auth-methods {
+                grid-template-columns: 1fr;
+            }
+            
+            .auth-method {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .token-lifecycle {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .token-state::after {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .section-title {
+                font-size: 1.75rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .token-lifecycle {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        /* Tooltip */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        [data-tooltip]:hover::before {
+            opacity: 1;
+            visibility: visible;
+            bottom: calc(100% + 8px);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                </div>
+                <div class="logo-text">
+                    <h1>THR505 Voice Demo</h1>
+                    <span>Technical Architecture Deep Dive</span>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="#solutions" class="nav-link active">Solutions</a>
+                <a href="#comparison" class="nav-link">Comparison</a>
+                <a href="#auth" class="nav-link">Authentication</a>
+                <a href="#troubleshoot" class="nav-link">Troubleshooting</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Executive Summary -->
+        <section class="section" id="solutions">
+            <div class="section-header">
+                <span class="section-badge">Overview</span>
+                <h2 class="section-title">Voice Integration Solutions</h2>
+                <p class="section-subtitle">Three distinct approaches for integrating voice capabilities with Microsoft Copilot Studio agents</p>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat-card fade-in">
+                    <div class="stat-value">200-400ms</div>
+                    <div class="stat-label">Direct Line Speech</div>
+                    <div class="stat-description">Lowest latency for real-time IVR</div>
+                </div>
+                <div class="stat-card fade-in delay-1">
+                    <div class="stat-value">400-600ms</div>
+                    <div class="stat-label">Ponyfill Mode</div>
+                    <div class="stat-description">Flexible voice for web apps</div>
+                </div>
+                <div class="stat-card fade-in delay-2">
+                    <div class="stat-value">100-200ms</div>
+                    <div class="stat-label">Direct Line Only</div>
+                    <div class="stat-description">Text-based chatbots</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Cards -->
+        <section class="section">
+            <div class="arch-grid">
+                <!-- Direct Line Speech -->
+                <div class="arch-card fade-in">
+                    <div class="arch-card-header">
+                        <div class="arch-card-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+                        </div>
+                        <h3 class="arch-card-title">Direct Line Speech</h3>
+                        <p class="arch-card-subtitle">Unified WebSocket channel for voice + messages</p>
+                    </div>
+                    <div class="arch-card-body">
+                        <div class="arch-card-diagram">
+                            <svg class="diagram-svg" viewBox="0 0 300 180">
+                                <defs>
+                                    <marker id="arrow1" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L9,3 z" fill="#30363d"/>
+                                    </marker>
+                                </defs>
+                                <!-- Client -->
+                                <rect x="10" y="60" width="70" height="50" class="node-box node-client"/>
+                                <text x="45" y="82" class="node-label">Browser</text>
+                                <text x="45" y="97" class="node-sublabel">Speech SDK</text>
+                                
+                                <!-- Speech Services -->
+                                <rect x="115" y="60" width="70" height="50" class="node-box node-azure"/>
+                                <text x="150" y="82" class="node-label">Azure</text>
+                                <text x="150" y="97" class="node-sublabel">Speech (DLS)</text>
+                                
+                                <!-- Proxy Bot -->
+                                <rect x="220" y="60" width="70" height="50" class="node-box node-server"/>
+                                <text x="255" y="82" class="node-label">Proxy Bot</text>
+                                <text x="255" y="97" class="node-sublabel">Relay</text>
+                                
+                                <!-- Copilot -->
+                                <rect x="220" y="130" width="70" height="40" class="node-box node-copilot"/>
+                                <text x="255" y="155" class="node-label">Copilot</text>
+                                
+                                <!-- Connections -->
+                                <line x1="80" y1="85" x2="115" y2="85" class="flow-line animated highlight-azure" marker-end="url(#arrow1)"/>
+                                <line x1="185" y1="85" x2="220" y2="85" class="flow-line" marker-end="url(#arrow1)"/>
+                                <line x1="255" y1="110" x2="255" y2="130" class="flow-line" marker-end="url(#arrow1)"/>
+                                
+                                <!-- Labels -->
+                                <text x="97" y="75" class="flow-label">WebSocket</text>
+                                <text x="97" y="100" class="flow-label" fill="#0078d4">Single conn</text>
+                            </svg>
+                        </div>
+                        <div class="arch-specs">
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Latency</span>
+                                <span class="arch-spec-value latency-low">~200-400ms</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Complexity</span>
+                                <span class="arch-spec-value complexity-high">High</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Connection</span>
+                                <span class="arch-spec-value">Single WebSocket</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Proxy Bot</span>
+                                <span class="arch-spec-value">Required</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ponyfill -->
+                <div class="arch-card fade-in delay-1">
+                    <div class="arch-card-header">
+                        <div class="arch-card-icon">
+                            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                        </div>
+                        <h3 class="arch-card-title">Direct Line + Ponyfill</h3>
+                        <p class="arch-card-subtitle">Dual connections for flexible voice integration</p>
+                    </div>
+                    <div class="arch-card-body">
+                        <div class="arch-card-diagram">
+                            <svg class="diagram-svg" viewBox="0 0 300 180">
+                                <defs>
+                                    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L9,3 z" fill="#30363d"/>
+                                    </marker>
+                                </defs>
+                                <!-- Client -->
+                                <rect x="10" y="70" width="70" height="50" class="node-box node-client"/>
+                                <text x="45" y="92" class="node-label">Browser</text>
+                                <text x="45" y="107" class="node-sublabel">WebChat</text>
+                                
+                                <!-- Speech -->
+                                <rect x="115" y="20" width="70" height="45" class="node-box node-azure"/>
+                                <text x="150" y="42" class="node-label">Speech</text>
+                                <text x="150" y="55" class="node-sublabel">STT/TTS</text>
+                                
+                                <!-- Direct Line -->
+                                <rect x="115" y="115" width="70" height="45" class="node-box node-azure"/>
+                                <text x="150" y="137" class="node-label">Direct Line</text>
+                                <text x="150" y="150" class="node-sublabel">Messages</text>
+                                
+                                <!-- Copilot -->
+                                <rect x="220" y="70" width="70" height="50" class="node-box node-copilot"/>
+                                <text x="255" y="92" class="node-label">Copilot</text>
+                                <text x="255" y="107" class="node-sublabel">Studio</text>
+                                
+                                <!-- Connections -->
+                                <line x1="80" y1="80" x2="115" y2="50" class="flow-line animated" stroke="#0078d4" marker-end="url(#arrow2)"/>
+                                <line x1="80" y1="110" x2="115" y2="130" class="flow-line animated" stroke="#742774" marker-end="url(#arrow2)"/>
+                                <line x1="185" y1="137" x2="220" y2="110" class="flow-line" marker-end="url(#arrow2)"/>
+                                
+                                <!-- Labels -->
+                                <text x="70" y="60" class="flow-label" fill="#0078d4">Audio WS</text>
+                                <text x="70" y="140" class="flow-label" fill="#742774">HTTP REST</text>
+                            </svg>
+                        </div>
+                        <div class="arch-specs">
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Latency</span>
+                                <span class="arch-spec-value latency-medium">~400-600ms</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Complexity</span>
+                                <span class="arch-spec-value complexity-medium">Medium</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Connection</span>
+                                <span class="arch-spec-value">Dual (Speech + DL)</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Proxy Bot</span>
+                                <span class="arch-spec-value">Not Required</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Direct Line Only -->
+                <div class="arch-card fade-in delay-2">
+                    <div class="arch-card-header">
+                        <div class="arch-card-icon">
+                            <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg>
+                        </div>
+                        <h3 class="arch-card-title">Direct Line Only</h3>
+                        <p class="arch-card-subtitle">Simple text-based chatbot integration</p>
+                    </div>
+                    <div class="arch-card-body">
+                        <div class="arch-card-diagram">
+                            <svg class="diagram-svg" viewBox="0 0 300 180">
+                                <defs>
+                                    <marker id="arrow3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L9,3 z" fill="#30363d"/>
+                                    </marker>
+                                </defs>
+                                <!-- Client -->
+                                <rect x="30" y="70" width="70" height="50" class="node-box node-client"/>
+                                <text x="65" y="92" class="node-label">Browser</text>
+                                <text x="65" y="107" class="node-sublabel">WebChat</text>
+                                
+                                <!-- Direct Line -->
+                                <rect x="135" y="70" width="70" height="50" class="node-box node-azure"/>
+                                <text x="170" y="92" class="node-label">Direct Line</text>
+                                <text x="170" y="107" class="node-sublabel">REST API</text>
+                                
+                                <!-- Copilot -->
+                                <rect x="240" y="70" width="50" height="50" class="node-box node-copilot"/>
+                                <text x="265" y="92" class="node-label">Copilot</text>
+                                <text x="265" y="107" class="node-sublabel">Agent</text>
+                                
+                                <!-- Connections -->
+                                <line x1="100" y1="95" x2="135" y2="95" class="flow-line animated highlight-success" marker-end="url(#arrow3)"/>
+                                <line x1="205" y1="95" x2="240" y2="95" class="flow-line" marker-end="url(#arrow3)"/>
+                                
+                                <!-- Label -->
+                                <text x="105" y="85" class="flow-label" fill="#00a878">HTTP + WS</text>
+                            </svg>
+                        </div>
+                        <div class="arch-specs">
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Latency</span>
+                                <span class="arch-spec-value latency-low">~100-200ms</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Complexity</span>
+                                <span class="arch-spec-value complexity-low">Low</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Connection</span>
+                                <span class="arch-spec-value">HTTP + WebSocket</span>
+                            </div>
+                            <div class="arch-spec">
+                                <span class="arch-spec-label">Voice</span>
+                                <span class="arch-spec-value">Not Supported</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Comparison Table -->
+        <section class="section" id="comparison">
+            <div class="section-header">
+                <span class="section-badge">Analysis</span>
+                <h2 class="section-title">Feature Comparison</h2>
+                <p class="section-subtitle">Detailed comparison of capabilities across all three solutions</p>
+            </div>
+
+            <div class="comparison-container">
+                <div class="comparison-header">
+                    <h3>Capabilities Matrix</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active">All Features</button>
+                        <button class="filter-btn">Voice Only</button>
+                        <button class="filter-btn">Technical</button>
+                    </div>
+                </div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Direct Line Speech</th>
+                            <th>Ponyfill Mode</th>
+                            <th>Direct Line Only</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
+                                    </div>
+                                    Voice Input (STT)
+                                </div>
+                            </td>
+                            <td><span class="check-icon yes">✓</span> Native</td>
+                            <td><span class="check-icon yes">✓</span> Via Ponyfill</td>
+                            <td><span class="check-icon no">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                                    </div>
+                                    Voice Output (TTS)
+                                </div>
+                            </td>
+                            <td><span class="check-icon yes">✓</span> Native</td>
+                            <td><span class="check-icon yes">✓</span> Via Ponyfill</td>
+                            <td><span class="check-icon no">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                    </div>
+                                    Connection Type
+                                </div>
+                            </td>
+                            <td><span class="badge badge-azure">Single WebSocket</span></td>
+                            <td><span class="badge badge-warning">Dual Connection</span></td>
+                            <td><span class="badge badge-success">HTTP + WS</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                                    </div>
+                                    Real-time Latency
+                                </div>
+                            </td>
+                            <td><span class="badge badge-success">200-400ms</span></td>
+                            <td><span class="badge badge-warning">400-600ms</span></td>
+                            <td><span class="badge badge-success">100-200ms</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                                    </div>
+                                    Implementation Complexity
+                                </div>
+                            </td>
+                            <td><span class="badge badge-error">High</span></td>
+                            <td><span class="badge badge-warning">Medium</span></td>
+                            <td><span class="badge badge-success">Low</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                                    </div>
+                                    Requires Proxy Bot
+                                </div>
+                            </td>
+                            <td><span class="check-icon yes">✓</span> Yes</td>
+                            <td><span class="check-icon no">✗</span> No</td>
+                            <td><span class="check-icon no">✗</span> No</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                                    </div>
+                                    Conversation History
+                                </div>
+                            </td>
+                            <td><span class="check-icon partial">⚠</span> Session only</td>
+                            <td><span class="check-icon yes">✓</span> Persisted</td>
+                            <td><span class="check-icon yes">✓</span> Persisted</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                                    </div>
+                                    Telephony Ready
+                                </div>
+                            </td>
+                            <td><span class="check-icon yes">✓</span> Yes</td>
+                            <td><span class="check-icon partial">⚠</span> Limited</td>
+                            <td><span class="check-icon no">✗</span> No</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                                    </div>
+                                    Custom Neural Voices
+                                </div>
+                            </td>
+                            <td><span class="check-icon yes">✓</span> Azure Neural</td>
+                            <td><span class="check-icon yes">✓</span> Azure Neural</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="feature-name">
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                                    </div>
+                                    Barge-in Support
+                                </div>
+                            </td>
+                            <td><span class="check-icon yes">✓</span> Native SDK</td>
+                            <td><span class="check-icon yes">✓</span> Custom impl</td>
+                            <td>N/A</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Latency Comparison -->
+        <section class="section">
+            <div class="latency-container">
+                <div class="latency-header">
+                    <h4>Latency Breakdown Analysis</h4>
+                    <p class="section-subtitle">Visual comparison of end-to-end voice interaction timing</p>
+                </div>
+                
+                <div class="latency-comparison">
+                    <div class="latency-row">
+                        <div class="latency-row-header">
+                            <div class="latency-row-title">
+                                <span class="latency-dot azure"></span>
+                                Direct Line Speech
+                            </div>
+                            <span class="latency-total" style="color: var(--azure-light);">~850ms total</span>
+                        </div>
+                        <div class="latency-bar-container">
+                            <div class="latency-segment segment-capture" style="width: 12%;" data-tooltip="Audio capture: 100ms">100ms</div>
+                            <div class="latency-segment segment-network" style="width: 6%;" data-tooltip="Network: 50ms">50</div>
+                            <div class="latency-segment segment-stt" style="width: 24%;" data-tooltip="STT: 200ms">200ms</div>
+                            <div class="latency-segment segment-bot" style="width: 18%;" data-tooltip="Bot processing: 150ms">150ms</div>
+                            <div class="latency-segment segment-tts" style="width: 29%;" data-tooltip="TTS synthesis: 250ms">250ms</div>
+                            <div class="latency-segment segment-response" style="width: 11%;" data-tooltip="Response: 100ms">100</div>
+                        </div>
+                    </div>
+                    
+                    <div class="latency-row">
+                        <div class="latency-row-header">
+                            <div class="latency-row-title">
+                                <span class="latency-dot copilot"></span>
+                                Ponyfill Mode
+                            </div>
+                            <span class="latency-total" style="color: var(--copilot-light);">~1150ms total</span>
+                        </div>
+                        <div class="latency-bar-container">
+                            <div class="latency-segment segment-capture" style="width: 9%;" data-tooltip="Audio capture: 100ms">100</div>
+                            <div class="latency-segment segment-network" style="width: 9%;" data-tooltip="WebSocket setup: 100ms">100</div>
+                            <div class="latency-segment segment-stt" style="width: 17%;" data-tooltip="STT: 200ms">200ms</div>
+                            <div class="latency-segment segment-bot" style="width: 22%;" data-tooltip="Bot + Polling: 250ms">250ms</div>
+                            <div class="latency-segment segment-tts" style="width: 30%;" data-tooltip="TTS request + synthesis: 350ms">350ms</div>
+                            <div class="latency-segment segment-response" style="width: 13%;" data-tooltip="Audio playback: 150ms">150</div>
+                        </div>
+                    </div>
+                    
+                    <div class="latency-row">
+                        <div class="latency-row-header">
+                            <div class="latency-row-title">
+                                <span class="latency-dot success"></span>
+                                Direct Line Only (Text)
+                            </div>
+                            <span class="latency-total" style="color: var(--success-green);">~200ms total</span>
+                        </div>
+                        <div class="latency-bar-container">
+                            <div class="latency-segment segment-network" style="width: 25%;" data-tooltip="HTTP POST: 50ms">50ms</div>
+                            <div class="latency-segment segment-bot" style="width: 50%;" data-tooltip="Bot processing: 100ms">100ms</div>
+                            <div class="latency-segment segment-response" style="width: 25%;" data-tooltip="WebSocket response: 50ms">50ms</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="latency-legend">
+                    <div class="legend-item">
+                        <div class="legend-color segment-capture"></div>
+                        <span>Audio Capture</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color segment-network"></div>
+                        <span>Network</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color segment-stt"></div>
+                        <span>Speech-to-Text</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color segment-bot"></div>
+                        <span>Bot Processing</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color segment-tts"></div>
+                        <span>Text-to-Speech</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color segment-response"></div>
+                        <span>Response/Playback</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Authentication Section -->
+        <section class="section" id="auth">
+            <div class="section-header">
+                <span class="section-badge">Security</span>
+                <h2 class="section-title">Authentication & Security</h2>
+                <p class="section-subtitle">Azure AD integration and token management for production deployments</p>
+            </div>
+
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h3>Authentication Methods</h3>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Choose the right authentication approach for your deployment scenario</p>
+                </div>
+                <div class="auth-methods">
+                    <div class="auth-method">
+                        <div class="auth-method-header">
+                            <div class="auth-method-icon recommended">
+                                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                            </div>
+                            <div>
+                                <h4 class="auth-method-title">Azure AD / Managed Identity</h4>
+                                <span class="auth-method-badge">RECOMMENDED</span>
+                            </div>
+                        </div>
+                        <div class="auth-steps">
+                            <div class="auth-step">
+                                <div class="auth-step-number">1</div>
+                                <div class="auth-step-content">
+                                    <h5>Initialize DefaultAzureCredential</h5>
+                                    <p>Automatically chains through credential providers</p>
+                                    <code>const credential = new DefaultAzureCredential();</code>
+                                </div>
+                            </div>
+                            <div class="auth-step">
+                                <div class="auth-step-number">2</div>
+                                <div class="auth-step-content">
+                                    <h5>Get Azure AD Token</h5>
+                                    <p>Request token with Cognitive Services scope</p>
+                                    <code>credential.getToken('https://cognitiveservices.azure.com/.default')</code>
+                                </div>
+                            </div>
+                            <div class="auth-step">
+                                <div class="auth-step-number">3</div>
+                                <div class="auth-step-content">
+                                    <h5>Exchange for Speech Token</h5>
+                                    <p>POST to /sts/v1.0/issueToken endpoint</p>
+                                    <code>POST https://your-speech.cognitiveservices.azure.com/sts/v1.0/issueToken</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="auth-method">
+                        <div class="auth-method-header">
+                            <div class="auth-method-icon legacy">
+                                <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                            </div>
+                            <div>
+                                <h4 class="auth-method-title">API Key (Legacy)</h4>
+                            </div>
+                        </div>
+                        <div class="auth-steps">
+                            <div class="auth-step">
+                                <div class="auth-step-number">1</div>
+                                <div class="auth-step-content">
+                                    <h5>Get Subscription Key</h5>
+                                    <p>From Azure Portal → Speech resource → Keys</p>
+                                    <code>Ocp-Apim-Subscription-Key: your-key</code>
+                                </div>
+                            </div>
+                            <div class="auth-step">
+                                <div class="auth-step-number">2</div>
+                                <div class="auth-step-content">
+                                    <h5>Request Speech Token</h5>
+                                    <p>Direct POST with API key header</p>
+                                    <code>POST https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken</code>
+                                </div>
+                            </div>
+                            <div class="auth-step">
+                                <div class="auth-step-number">⚠️</div>
+                                <div class="auth-step-content">
+                                    <h5>Security Warning</h5>
+                                    <p style="color: var(--warning-orange);">API keys cannot be scoped and are harder to rotate. Not recommended for production.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Lifecycle -->
+            <div class="token-lifecycle">
+                <div class="token-state">
+                    <div class="token-state-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    </div>
+                    <h5 class="token-state-title">Fetching</h5>
+                    <p class="token-state-desc">Request token from Azure</p>
+                </div>
+                <div class="token-state">
+                    <div class="token-state-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    </div>
+                    <h5 class="token-state-title">Valid</h5>
+                    <p class="token-state-desc">Token active (10 min TTL)</p>
+                </div>
+                <div class="token-state">
+                    <div class="token-state-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                    </div>
+                    <h5 class="token-state-title">Expiring</h5>
+                    <p class="token-state-desc">TTL - 2 min buffer</p>
+                </div>
+                <div class="token-state">
+                    <div class="token-state-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    </div>
+                    <h5 class="token-state-title">Refreshed</h5>
+                    <p class="token-state-desc">New token acquired</p>
+                </div>
+            </div>
+
+            <!-- RBAC Roles -->
+            <div class="flow-container" style="margin-top: 2rem;">
+                <h4 style="margin-bottom: 1.5rem;">Required RBAC Roles</h4>
+                <table class="env-table">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Purpose</th>
+                            <th>Scope</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="env-name">Cognitive Services Speech User</span></td>
+                            <td>Minimum for STT/TTS operations</td>
+                            <td><span class="badge badge-success">Required</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">Cognitive Services User</span></td>
+                            <td>General access to all cognitive services</td>
+                            <td><span class="badge badge-azure">Alternative</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">Cognitive Services Speech Contributor</span></td>
+                            <td>Manage custom speech models</td>
+                            <td><span class="badge badge-warning">Optional</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Environment Variables -->
+        <section class="section">
+            <div class="flow-container">
+                <h4 style="margin-bottom: 1.5rem;">Environment Variables by Solution</h4>
+                <table class="env-table">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Description</th>
+                            <th>Required By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="env-name">SPEECH_REGION</span></td>
+                            <td>Azure region (e.g., eastus)</td>
+                            <td>
+                                <div class="env-solution">
+                                    <span class="badge badge-azure">DLS</span>
+                                    <span class="badge badge-azure">Ponyfill</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">SPEECH_KEY</span></td>
+                            <td>API key or USE_AZURE_AD</td>
+                            <td>
+                                <div class="env-solution">
+                                    <span class="badge badge-azure">DLS</span>
+                                    <span class="badge badge-azure">Ponyfill</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">SPEECH_RESOURCE_ENDPOINT</span></td>
+                            <td>Custom domain endpoint URL</td>
+                            <td>
+                                <div class="env-solution">
+                                    <span class="badge badge-azure">DLS</span>
+                                    <span class="badge badge-azure">Ponyfill</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">TOKEN_ENDPOINT</span></td>
+                            <td>Copilot Studio token endpoint</td>
+                            <td>
+                                <div class="env-solution">
+                                    <span class="badge badge-azure">Ponyfill</span>
+                                    <span class="badge badge-success">DL Only</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">DIRECT_LINE_SECRET</span></td>
+                            <td>Direct Line channel secret</td>
+                            <td>
+                                <div class="env-solution">
+                                    <span class="badge badge-warning">Alternative</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="env-name">DLS_BOT_ENDPOINT</span></td>
+                            <td>Proxy bot messaging endpoint</td>
+                            <td>
+                                <div class="env-solution">
+                                    <span class="badge badge-azure">DLS Only</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="section" id="troubleshoot">
+            <div class="section-header">
+                <span class="section-badge">Debugging</span>
+                <h2 class="section-title">Troubleshooting Guide</h2>
+                <p class="section-subtitle">Common issues and their resolutions for each solution</p>
+            </div>
+
+            <div class="troubleshoot-list">
+                <div class="troubleshoot-item">
+                    <div class="troubleshoot-header" onclick="this.parentElement.classList.toggle('open')">
+                        <div class="troubleshoot-title">
+                            <span class="troubleshoot-code">401</span>
+                            <span class="troubleshoot-desc">WebSocket Connection Failed - Unauthorized</span>
+                        </div>
+                        <div class="troubleshoot-toggle">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                        </div>
+                    </div>
+                    <div class="troubleshoot-content">
+                        <div class="troubleshoot-steps">
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Verify Azure CLI login: <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">az account show</code></span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Check RBAC roles on Speech resource: <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">az role assignment list --scope $resourceId</code></span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Ensure using custom domain endpoint (not regional)</span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Clear token cache and restart server</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="troubleshoot-item">
+                    <div class="troubleshoot-header" onclick="this.parentElement.classList.toggle('open')">
+                        <div class="troubleshoot-title">
+                            <span class="troubleshoot-code">502</span>
+                            <span class="troubleshoot-desc">Proxy Bot Bad Gateway</span>
+                        </div>
+                        <div class="troubleshoot-toggle">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                        </div>
+                    </div>
+                    <div class="troubleshoot-content">
+                        <div class="troubleshoot-steps">
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Check App Service is running: <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">az webapp show --query state</code></span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">View live logs: <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">az webapp log tail</code></span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Verify MicrosoftAppId and MicrosoftAppPassword in app settings</span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Restart App Service: <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">az webapp restart</code></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="troubleshoot-item">
+                    <div class="troubleshoot-header" onclick="this.parentElement.classList.toggle('open')">
+                        <div class="troubleshoot-title">
+                            <span class="troubleshoot-code">400</span>
+                            <span class="troubleshoot-desc">Speech Token Bad Request</span>
+                        </div>
+                        <div class="troubleshoot-toggle">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                        </div>
+                    </div>
+                    <div class="troubleshoot-content">
+                        <div class="troubleshoot-steps">
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Verify token scope is <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">https://cognitiveservices.azure.com/.default</code></span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Check if disableLocalAuth is true (requires Azure AD)</span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Set <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">SPEECH_KEY=USE_AZURE_AD</code> in .env</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="troubleshoot-item">
+                    <div class="troubleshoot-header" onclick="this.parentElement.classList.toggle('open')">
+                        <div class="troubleshoot-title">
+                            <span class="troubleshoot-code">MIC</span>
+                            <span class="troubleshoot-desc">Microphone Permission Denied</span>
+                        </div>
+                        <div class="troubleshoot-toggle">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                        </div>
+                    </div>
+                    <div class="troubleshoot-content">
+                        <div class="troubleshoot-steps">
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Click lock icon in address bar → Allow microphone</span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Ensure HTTPS or localhost (secure context required)</span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Reset permissions: Browser Settings → Privacy → Microphone</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="troubleshoot-item">
+                    <div class="troubleshoot-header" onclick="this.parentElement.classList.toggle('open')">
+                        <div class="troubleshoot-title">
+                            <span class="troubleshoot-code">CORS</span>
+                            <span class="troubleshoot-desc">Cross-Origin Request Blocked</span>
+                        </div>
+                        <div class="troubleshoot-toggle">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                        </div>
+                    </div>
+                    <div class="troubleshoot-content">
+                        <div class="troubleshoot-steps">
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Add CORS middleware: <code style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">app.use(cors({ origin: 'http://localhost:5173' }))</code></span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Verify API_BASE_URL matches server address</span>
+                            </div>
+                            <div class="troubleshoot-step">
+                                <span class="step-arrow">→</span>
+                                <span class="step-text">Check for preflight OPTIONS handling</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-badge">Reference</span>
+                <h2 class="section-title">Quick Start Commands</h2>
+            </div>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-filename">terminal</span>
+                    <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <div class="code-block">
+<pre><span class="code-comment"># Terminal 1: Start server</span>
+<span class="code-keyword">cd</span> server
+<span class="code-function">npm</span> install
+<span class="code-function">npm</span> run dev
+
+<span class="code-comment"># Terminal 2: Start client</span>
+<span class="code-keyword">cd</span> client
+<span class="code-function">npm</span> install
+<span class="code-function">npm</span> run dev
+
+<span class="code-comment"># Open browser at http://localhost:5173</span></pre>
+                </div>
+            </div>
+
+            <div class="hero-stats" style="margin-top: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size: 1.5rem;">:5173</div>
+                    <div class="stat-label">Client Dev Server</div>
+                    <div class="stat-description">React + Vite</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size: 1.5rem;">:3001</div>
+                    <div class="stat-label">API Server</div>
+                    <div class="stat-description">Express + TypeScript</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size: 1.5rem;">:3978</div>
+                    <div class="stat-label">Proxy Bot (Local)</div>
+                    <div class="stat-description">Bot Framework</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <a href="#" class="footer-link">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
+                Documentation
+            </a>
+            <a href="#" class="footer-link">
+                <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                GitHub
+            </a>
+            <a href="#" class="footer-link">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                API Reference
+            </a>
+            <span style="color: var(--text-muted);">THR505 Voice Demo • February 2026</span>
+        </div>
+    </footer>
+
+    <script>
+        // Copy code function
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-container').querySelector('pre');
+            navigator.clipboard.writeText(codeBlock.textContent);
+            button.textContent = 'Copied!';
+            setTimeout(() => button.textContent = 'Copy', 2000);
+        }
+
+        // Smooth scrolling for nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const href = link.getAttribute('href');
+                if (href.startsWith('#')) {
+                    e.preventDefault();
+                    document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Intersection Observer for nav highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    document.querySelectorAll('.nav-link').forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+                    });
+                }
+            });
+        }, { threshold: 0.3 });
+
+        sections.forEach(section => observer.observe(section));
+
+        // Filter buttons functionality
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Open first troubleshoot item by default
+        document.querySelector('.troubleshoot-item')?.classList.add('open');
+    </script>
+</body>
+</html>

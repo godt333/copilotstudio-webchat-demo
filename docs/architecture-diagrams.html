@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Copilot Studio Web Chat Integration - Architecture Diagrams</title>
+  <style>
+    :root {
+      --primary: #0078d4;
+      --primary-dark: #005a9e;
+      --secondary: #5c2d91;
+      --accent: #00bcf2;
+      --success: #107c10;
+      --warning: #ffb900;
+      --danger: #d13438;
+      --surface: #ffffff;
+      --surface-secondary: #f5f5f5;
+      --text-primary: #323130;
+      --text-secondary: #605e5c;
+      --border: #e1dfdd;
+      --shadow: rgba(0, 0, 0, 0.1);
+      --gradient-blue: linear-gradient(135deg, #0078d4 0%, #00bcf2 100%);
+      --gradient-purple: linear-gradient(135deg, #5c2d91 0%, #8661c5 100%);
+      --gradient-green: linear-gradient(135deg, #107c10 0%, #3db93d 100%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(180deg, #f3f2f1 0%, #ffffff 100%);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--gradient-blue);
+      color: white;
+      padding: 3rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      opacity: 0.5;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      position: relative;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      font-size: 1.2rem;
+      opacity: 0.95;
+      position: relative;
+    }
+
+    /* Navigation */
+    .nav {
+      background: white;
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px var(--shadow);
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .nav a {
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 24px;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      font-size: 0.95rem;
+      border: 2px solid transparent;
+    }
+
+    .nav a:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .nav a.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Section Styles */
+    .section {
+      margin-bottom: 4rem;
+      scroll-margin-top: 100px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .section-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .section-icon.blue { background: var(--gradient-blue); }
+    .section-icon.purple { background: var(--gradient-purple); }
+    .section-icon.green { background: var(--gradient-green); }
+
+    .section h2 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .section-description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 800px;
+      margin-bottom: 2rem;
+    }
+
+    /* Card Styles */
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px var(--shadow);
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .card-body {
+      padding: 2rem;
+    }
+
+    /* Architecture Diagram Container */
+    .diagram-container {
+      background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+      border-radius: 12px;
+      padding: 2rem;
+      position: relative;
+      min-height: 400px;
+      overflow-x: auto;
+    }
+
+    /* Diagram Components */
+    .diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      min-width: 900px;
+    }
+
+    .diagram-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 2rem;
+      position: relative;
+    }
+
+    /* Boxes */
+    .box {
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      font-weight: 500;
+      font-size: 0.9rem;
+      min-width: 150px;
+      position: relative;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .box:hover {
+      transform: scale(1.05);
+    }
+
+    .box-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .box-label {
+      display: block;
+      font-weight: 600;
+    }
+
+    .box-sublabel {
+      display: block;
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-top: 0.25rem;
+    }
+
+    /* Box Colors */
+    .box-client {
+      background: var(--gradient-blue);
+      color: white;
+    }
+
+    .box-server {
+      background: var(--gradient-purple);
+      color: white;
+    }
+
+    .box-cloud {
+      background: linear-gradient(135deg, #00bcf2 0%, #0078d4 100%);
+      color: white;
+    }
+
+    .box-auth {
+      background: var(--gradient-green);
+      color: white;
+    }
+
+    .box-service {
+      background: linear-gradient(135deg, #ffb900 0%, #ff8c00 100%);
+      color: white;
+    }
+
+    .box-voice {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      color: white;
+    }
+
+    .box-neutral {
+      background: white;
+      color: var(--text-primary);
+      border: 2px solid var(--border);
+    }
+
+    /* Connectors */
+    .connector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .connector-line {
+      height: 2px;
+      width: 60px;
+      background: var(--border);
+      position: relative;
+    }
+
+    .connector-line::after {
+      content: '▶';
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.6rem;
+      color: var(--primary);
+    }
+
+    .connector-down {
+      flex-direction: column;
+    }
+
+    .connector-down .connector-line {
+      width: 2px;
+      height: 40px;
+    }
+
+    .connector-down .connector-line::after {
+      content: '▼';
+      right: 50%;
+      top: auto;
+      bottom: -10px;
+      transform: translateX(50%);
+    }
+
+    .connector-label {
+      background: #e8e8e8;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    /* Vertical Flow Diagram */
+    .flow-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      position: relative;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+    }
+
+    .step-content {
+      flex: 1;
+      background: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow);
+      min-width: 250px;
+    }
+
+    .step-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .step-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .flow-arrow {
+      width: 2px;
+      height: 30px;
+      background: linear-gradient(to bottom, var(--primary), var(--accent));
+      margin-left: 19px;
+      position: relative;
+    }
+
+    .flow-arrow::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid var(--accent);
+    }
+
+    /* Grid Layout */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Comparison Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.95rem;
+    }
+
+    .comparison-table th {
+      background: var(--gradient-blue);
+      color: white;
+      padding: 1rem 1.5rem;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .comparison-table th:first-child {
+      border-radius: 12px 0 0 0;
+    }
+
+    .comparison-table th:last-child {
+      border-radius: 0 12px 0 0;
+    }
+
+    .comparison-table td {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: white;
+    }
+
+    .comparison-table tr:last-child td:first-child {
+      border-radius: 0 0 0 12px;
+    }
+
+    .comparison-table tr:last-child td:last-child {
+      border-radius: 0 0 12px 0;
+    }
+
+    .comparison-table tr:hover td {
+      background: #f9f9f9;
+    }
+
+    .check {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .cross {
+      color: var(--danger);
+    }
+
+    /* Feature Cards */
+    .feature-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 12px var(--shadow);
+      border-left: 4px solid var(--primary);
+    }
+
+    .feature-card h4 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-blue {
+      background: rgba(0, 120, 212, 0.1);
+      color: var(--primary);
+    }
+
+    .badge-purple {
+      background: rgba(92, 45, 145, 0.1);
+      color: var(--secondary);
+    }
+
+    .badge-green {
+      background: rgba(16, 124, 16, 0.1);
+      color: var(--success);
+    }
+
+    .badge-orange {
+      background: rgba(255, 185, 0, 0.15);
+      color: #b86e00;
+    }
+
+    /* Code Block */
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1.5rem;
+      border-radius: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      line-height: 1.7;
+    }
+
+    .code-comment {
+      color: #6a9955;
+    }
+
+    .code-keyword {
+      color: #569cd6;
+    }
+
+    .code-string {
+      color: #ce9178;
+    }
+
+    .code-func {
+      color: #dcdcaa;
+    }
+
+    /* Info Box */
+    .info-box {
+      background: rgba(0, 120, 212, 0.05);
+      border: 1px solid rgba(0, 120, 212, 0.2);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .info-box-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .info-box h4 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .info-box p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Layers Diagram */
+    .layers {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .layer {
+      padding: 1.5rem 2rem;
+      border-radius: 8px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .layer:not(:last-child) {
+      margin-bottom: -8px;
+    }
+
+    .layer-1 { background: linear-gradient(135deg, #e8f4ff 0%, #cce3ff 100%); z-index: 5; }
+    .layer-2 { background: linear-gradient(135deg, #e3f2e8 0%, #c8e6cf 100%); z-index: 4; }
+    .layer-3 { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); z-index: 3; }
+    .layer-4 { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); z-index: 2; }
+    .layer-5 { background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); z-index: 1; }
+
+    .layer-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .layer-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.75rem;
+      }
+
+      .nav {
+        padding: 0.75rem;
+        gap: 0.5rem;
+      }
+
+      .nav a {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+      }
+
+      .container {
+        padding: 1rem;
+      }
+
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .diagram-container {
+        padding: 1rem;
+      }
+
+      .diagram {
+        min-width: 600px;
+      }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section {
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Print Styles */
+    @media print {
+      .nav {
+        display: none;
+      }
+      
+      .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <h1>🚀 Copilot Studio Web Chat Integration</h1>
+    <p>Architecture Diagrams for Text & Voice Integration</p>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="#overview">Overview</a>
+    <a href="#token-endpoint">Token Endpoint</a>
+    <a href="#agents-sdk">M365 Agents SDK</a>
+    <a href="#voice">Voice Integration</a>
+    <a href="#theming">Theming & Styling</a>
+    <a href="#comparison">Comparison</a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container">
+
+    <!-- Overview Section -->
+    <section id="overview" class="section">
+      <div class="section-header">
+        <div class="section-icon blue">📊</div>
+        <div>
+          <h2>Architecture Overview</h2>
+          <span class="badge badge-blue">Integration Patterns</span>
+        </div>
+      </div>
+      <p class="section-description">
+        Microsoft Copilot Studio provides multiple integration approaches for embedding conversational AI into web applications. 
+        Each approach has distinct authentication mechanisms, capabilities, and use cases.
+      </p>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            🏗️ High-Level Architecture
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="diagram-container">
+            <div class="layers">
+              <div class="layer layer-1">
+                <div class="layer-title">🖥️ User Interface Layer</div>
+                <div class="layer-desc">React Application • BotFramework WebChat • Fluent UI</div>
+              </div>
+              <div class="layer layer-2">
+                <div class="layer-title">🔗 Connection Layer</div>
+                <div class="layer-desc">DirectLine Protocol • CopilotStudioWebChat Connection</div>
+              </div>
+              <div class="layer layer-3">
+                <div class="layer-title">🔐 Authentication Layer</div>
+                <div class="layer-desc">Token Endpoint (Anonymous) • MSAL/Azure AD (Authenticated)</div>
+              </div>
+              <div class="layer layer-4">
+                <div class="layer-title">☁️ Microsoft Cloud Services</div>
+                <div class="layer-desc">Copilot Studio • Power Platform API • Azure Bot Service</div>
+              </div>
+              <div class="layer layer-5">
+                <div class="layer-title">🤖 AI & Knowledge Layer</div>
+                <div class="layer-desc">Topics & Dialogs • Generative AI • Knowledge Sources • Power Automate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top: 2rem;">
+        <div class="feature-card">
+          <h4>🎫 Token Endpoint</h4>
+          <p>Anonymous access for public websites. No user sign-in required. Simple integration with DirectLine.</p>
+        </div>
+        <div class="feature-card">
+          <h4>🔑 M365 Agents SDK</h4>
+          <p>Authenticated access with Azure AD. User identity aware. Access to enterprise data sources.</p>
+        </div>
+        <div class="feature-card">
+          <h4>🎤 Voice Integration</h4>
+          <p>Speech-to-text and text-to-speech capabilities using Azure Cognitive Services or DirectLine Speech.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Token Endpoint Section -->
+    <section id="token-endpoint" class="section">
+      <div class="section-header">
+        <div class="section-icon green">🎫</div>
+        <div>
+          <h2>Token Endpoint Architecture</h2>
+          <span class="badge badge-green">Anonymous Access</span>
+        </div>
+      </div>
+      <p class="section-description">
+        The Token Endpoint approach enables anonymous chat without user authentication. Ideal for public-facing websites and citizen services.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔄 Authentication Flow</div>
+          </div>
+          <div class="card-body">
+            <div class="diagram-container">
+              <div class="diagram">
+                <div class="diagram-row">
+                  <div class="box box-client">
+                    <div class="box-icon">🌐</div>
+                    <span class="box-label">Web Browser</span>
+                    <span class="box-sublabel">React App</span>
+                  </div>
+                </div>
+                
+                <div class="diagram-row">
+                  <div class="connector connector-down">
+                    <div class="connector-line"></div>
+                    <span class="connector-label">1. GET /token</span>
+                  </div>
+                </div>
+
+                <div class="diagram-row">
+                  <div class="box box-cloud">
+                    <div class="box-icon">🎫</div>
+                    <span class="box-label">Token Endpoint</span>
+                    <span class="box-sublabel">No Auth Required</span>
+                  </div>
+                </div>
+
+                <div class="diagram-row">
+                  <div class="connector connector-down">
+                    <div class="connector-line"></div>
+                    <span class="connector-label">2. DirectLine Token</span>
+                  </div>
+                </div>
+
+                <div class="diagram-row">
+                  <div class="box box-client">
+                    <div class="box-icon">💬</div>
+                    <span class="box-label">WebChat</span>
+                    <span class="box-sublabel">createDirectLine()</span>
+                  </div>
+                  <div class="connector">
+                    <div class="connector-line" style="width: 80px;"></div>
+                    <span class="connector-label">3. Connect</span>
+                  </div>
+                  <div class="box box-server">
+                    <div class="box-icon">🤖</div>
+                    <span class="box-label">Copilot Studio</span>
+                    <span class="box-sublabel">Bot Service</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 Implementation Steps</div>
+          </div>
+          <div class="card-body">
+            <div class="flow-vertical">
+              <div class="flow-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <div class="step-title">Get Token Endpoint URL</div>
+                  <div class="step-desc">Copilot Studio → Channels → Mobile App</div>
+                </div>
+              </div>
+              <div class="flow-arrow"></div>
+              
+              <div class="flow-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <div class="step-title">Fetch DirectLine Token</div>
+                  <div class="step-desc">Simple GET request, no credentials</div>
+                </div>
+              </div>
+              <div class="flow-arrow"></div>
+              
+              <div class="flow-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <div class="step-title">Create DirectLine Connection</div>
+                  <div class="step-desc">createDirectLine({ token })</div>
+                </div>
+              </div>
+              <div class="flow-arrow"></div>
+              
+              <div class="flow-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <div class="step-title">Render WebChat</div>
+                  <div class="step-desc">&lt;ReactWebChat directLine={...} /&gt;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">💻 Code Example</div>
+        </div>
+        <div class="card-body">
+          <div class="code-block">
+<span class="code-comment">// Token Endpoint Approach - Anonymous Access</span>
+<span class="code-keyword">import</span> ReactWebChat, { createDirectLine } <span class="code-keyword">from</span> <span class="code-string">'botframework-webchat'</span>;
+
+<span class="code-keyword">const</span> TOKEN_ENDPOINT = <span class="code-string">'https://&lt;env&gt;.environment.api.powerplatform.com/.../directline/token'</span>;
+
+<span class="code-keyword">async function</span> <span class="code-func">initChat</span>() {
+  <span class="code-comment">// Step 1: Fetch token (no auth required)</span>
+  <span class="code-keyword">const</span> response = <span class="code-keyword">await</span> <span class="code-func">fetch</span>(TOKEN_ENDPOINT);
+  <span class="code-keyword">const</span> { token } = <span class="code-keyword">await</span> response.<span class="code-func">json</span>();
+  
+  <span class="code-comment">// Step 2: Create DirectLine connection</span>
+  <span class="code-keyword">const</span> directLine = <span class="code-func">createDirectLine</span>({ token });
+  
+  <span class="code-comment">// Step 3: Render chat</span>
+  <span class="code-keyword">return</span> &lt;<span class="code-func">ReactWebChat</span> directLine={directLine} /&gt;;
+}
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box" style="margin-top: 2rem;">
+        <div class="info-box-icon">⚠️</div>
+        <div>
+          <h4>Important Configuration</h4>
+          <p>For Token Endpoint to work, your Copilot Studio agent must be configured with <strong>"No authentication"</strong> in Settings → Security. 
+          Do not use SharePoint or Dataverse knowledge sources as they require authentication.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- M365 Agents SDK Section -->
+    <section id="agents-sdk" class="section">
+      <div class="section-header">
+        <div class="section-icon purple">🔑</div>
+        <div>
+          <h2>M365 Agents SDK Architecture</h2>
+          <span class="badge badge-purple">Authenticated Access</span>
+        </div>
+      </div>
+      <p class="section-description">
+        The M365 Agents SDK enables authenticated chat with Azure AD integration. Provides user identity context and access to enterprise data sources.
+      </p>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔄 OAuth 2.0 Authentication Flow</div>
+        </div>
+        <div class="card-body">
+          <div class="diagram-container">
+            <div class="diagram">
+              <!-- Row 1: User Browser -->
+              <div class="diagram-row">
+                <div class="box box-client">
+                  <div class="box-icon">👤</div>
+                  <span class="box-label">User Browser</span>
+                  <span class="box-sublabel">React + MSAL</span>
+                </div>
+                <div class="connector">
+                  <span class="connector-label">1. Sign In</span>
+                  <div class="connector-line" style="width: 100px;"></div>
+                </div>
+                <div class="box box-auth">
+                  <div class="box-icon">🔐</div>
+                  <span class="box-label">Azure AD</span>
+                  <span class="box-sublabel">Entra ID</span>
+                </div>
+              </div>
+
+              <!-- Row 2: Token Exchange -->
+              <div class="diagram-row">
+                <div class="box box-client">
+                  <div class="box-icon">🎫</div>
+                  <span class="box-label">Access Token</span>
+                  <span class="box-sublabel">api.powerplatform.com</span>
+                </div>
+                <div class="connector">
+                  <span class="connector-label">2. Acquire Token</span>
+                  <div class="connector-line" style="width: 100px;"></div>
+                </div>
+                <div class="box box-neutral">
+                  <div class="box-icon">📋</div>
+                  <span class="box-label">Scope</span>
+                  <span class="box-sublabel">CopilotStudio.Copilots.Invoke</span>
+                </div>
+              </div>
+
+              <!-- Row 3: SDK Connection -->
+              <div class="diagram-row">
+                <div class="box box-client">
+                  <div class="box-icon">📦</div>
+                  <span class="box-label">CopilotStudioClient</span>
+                  <span class="box-sublabel">SDK Instance</span>
+                </div>
+                <div class="connector">
+                  <span class="connector-label">3. Direct Connect</span>
+                  <div class="connector-line" style="width: 100px;"></div>
+                </div>
+                <div class="box box-cloud">
+                  <div class="box-icon">☁️</div>
+                  <span class="box-label">Power Platform API</span>
+                  <span class="box-sublabel">Authenticated Endpoint</span>
+                </div>
+              </div>
+
+              <!-- Row 4: WebChat -->
+              <div class="diagram-row">
+                <div class="box box-client">
+                  <div class="box-icon">💬</div>
+                  <span class="box-label">WebChat</span>
+                  <span class="box-sublabel">Fluent Theme</span>
+                </div>
+                <div class="connector">
+                  <span class="connector-label">4. Chat with Identity</span>
+                  <div class="connector-line" style="width: 100px;"></div>
+                </div>
+                <div class="box box-server">
+                  <div class="box-icon">🤖</div>
+                  <span class="box-label">Copilot Studio</span>
+                  <span class="box-sublabel">User-Aware Bot</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 2rem;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚙️ Azure AD Setup</div>
+          </div>
+          <div class="card-body">
+            <div class="flow-vertical">
+              <div class="flow-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <div class="step-title">Create App Registration</div>
+                  <div class="step-desc">Azure Portal → App registrations → New</div>
+                </div>
+              </div>
+              <div class="flow-arrow"></div>
+              
+              <div class="flow-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <div class="step-title">Configure Redirect URI</div>
+                  <div class="step-desc">SPA → http://localhost:5173</div>
+                </div>
+              </div>
+              <div class="flow-arrow"></div>
+              
+              <div class="flow-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <div class="step-title">Add API Permission</div>
+                  <div class="step-desc">Power Platform API → CopilotStudio.Copilots.Invoke</div>
+                </div>
+              </div>
+              <div class="flow-arrow"></div>
+              
+              <div class="flow-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <div class="step-title">Grant Admin Consent</div>
+                  <div class="step-desc">Admin approval for delegated permissions</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📦 Required Packages</div>
+          </div>
+          <div class="card-body">
+            <div class="code-block">
+<span class="code-comment"># Core SDK</span>
+npm install @microsoft/agents-copilotstudio-client
+
+<span class="code-comment"># Authentication</span>
+npm install @azure/msal-browser @azure/msal-react
+
+<span class="code-comment"># WebChat with Fluent Theme</span>
+npm install botframework-webchat
+npm install botframework-webchat-fluent-theme
+            </div>
+            <div class="grid-3" style="margin-top: 1.5rem;">
+              <div class="feature-card" style="border-left-color: var(--secondary);">
+                <h4>🔐 MSAL</h4>
+                <p>Microsoft Authentication Library for Azure AD</p>
+              </div>
+              <div class="feature-card" style="border-left-color: var(--primary);">
+                <h4>📦 SDK</h4>
+                <p>CopilotStudioClient for authenticated connections</p>
+              </div>
+              <div class="feature-card" style="border-left-color: var(--success);">
+                <h4>🎨 Fluent</h4>
+                <p>Microsoft Teams-style theming</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">💻 Code Example</div>
+        </div>
+        <div class="card-body">
+          <div class="code-block">
+<span class="code-comment">// M365 Agents SDK - Authenticated Access</span>
+<span class="code-keyword">import</span> { CopilotStudioClient, CopilotStudioWebChat } <span class="code-keyword">from</span> <span class="code-string">'@microsoft/agents-copilotstudio-client'</span>;
+<span class="code-keyword">import</span> { PublicClientApplication } <span class="code-keyword">from</span> <span class="code-string">'@azure/msal-browser'</span>;
+<span class="code-keyword">import</span> ReactWebChat <span class="code-keyword">from</span> <span class="code-string">'botframework-webchat'</span>;
+<span class="code-keyword">import</span> { FluentThemeProvider } <span class="code-keyword">from</span> <span class="code-string">'botframework-webchat-fluent-theme'</span>;
+
+<span class="code-comment">// Initialize MSAL</span>
+<span class="code-keyword">const</span> msal = <span class="code-keyword">new</span> <span class="code-func">PublicClientApplication</span>({
+  auth: {
+    clientId: <span class="code-string">'YOUR_CLIENT_ID'</span>,
+    authority: <span class="code-string">'https://login.microsoftonline.com/YOUR_TENANT'</span>,
+    redirectUri: window.location.origin
+  }
+});
+
+<span class="code-keyword">async function</span> <span class="code-func">initAuthenticatedChat</span>() {
+  <span class="code-comment">// Step 1: Acquire token with Power Platform scope</span>
+  <span class="code-keyword">const</span> token = <span class="code-keyword">await</span> msal.<span class="code-func">acquireTokenSilent</span>({
+    scopes: [<span class="code-string">'https://api.powerplatform.com/.default'</span>]
+  });
+
+  <span class="code-comment">// Step 2: Create authenticated client</span>
+  <span class="code-keyword">const</span> client = <span class="code-keyword">new</span> <span class="code-func">CopilotStudioClient</span>(
+    { directConnectUrl: <span class="code-string">'YOUR_DIRECT_CONNECT_URL'</span> },
+    token.accessToken
+  );
+
+  <span class="code-comment">// Step 3: Create DirectLine-compatible connection</span>
+  <span class="code-keyword">const</span> connection = CopilotStudioWebChat.<span class="code-func">createConnection</span>(client);
+
+  <span class="code-comment">// Step 4: Render with Fluent theme</span>
+  <span class="code-keyword">return</span> (
+    &lt;<span class="code-func">FluentThemeProvider</span>&gt;
+      &lt;<span class="code-func">ReactWebChat</span> directLine={connection} /&gt;
+    &lt;/<span class="code-func">FluentThemeProvider</span>&gt;
+  );
+}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Voice Integration Section -->
+    <section id="voice" class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">🎤</div>
+        <div>
+          <h2>Voice Integration Architecture</h2>
+          <span class="badge badge-orange">Speech Capabilities</span>
+        </div>
+      </div>
+      <p class="section-description">
+        Add speech-to-text and text-to-speech capabilities to your Copilot Studio chat using Azure Cognitive Services or DirectLine Speech.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎙️ Web Speech API (Browser)</div>
+            <span class="badge badge-green">Simple</span>
+          </div>
+          <div class="card-body">
+            <div class="diagram-container">
+              <div class="diagram" style="gap: 1.5rem;">
+                <div class="diagram-row">
+                  <div class="box box-client">
+                    <div class="box-icon">🎤</div>
+                    <span class="box-label">Browser Microphone</span>
+                    <span class="box-sublabel">User Speech</span>
+                  </div>
+                </div>
+                <div class="diagram-row">
+                  <div class="connector connector-down">
+                    <div class="connector-line"></div>
+                    <span class="connector-label">Web Speech API</span>
+                  </div>
+                </div>
+                <div class="diagram-row">
+                  <div class="box box-neutral">
+                    <div class="box-icon">📝</div>
+                    <span class="box-label">Speech Recognition</span>
+                    <span class="box-sublabel">Browser Built-in</span>
+                  </div>
+                  <div class="connector">
+                    <div class="connector-line"></div>
+                  </div>
+                  <div class="box box-client">
+                    <div class="box-icon">💬</div>
+                    <span class="box-label">WebChat</span>
+                    <span class="box-sublabel">Text Input</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="info-box" style="margin-top: 1.5rem;">
+              <div class="info-box-icon">💡</div>
+              <div>
+                <h4>Pros & Cons</h4>
+                <p>✓ No additional cost • ✓ Simple setup<br>✗ Browser dependent • ✗ Limited language support</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">☁️ Azure Cognitive Services</div>
+            <span class="badge badge-purple">Enterprise</span>
+          </div>
+          <div class="card-body">
+            <div class="diagram-container">
+              <div class="diagram" style="gap: 1.5rem;">
+                <div class="diagram-row">
+                  <div class="box box-client">
+                    <div class="box-icon">🎤</div>
+                    <span class="box-label">Microphone</span>
+                    <span class="box-sublabel">Audio Stream</span>
+                  </div>
+                </div>
+                <div class="diagram-row">
+                  <div class="connector connector-down">
+                    <div class="connector-line"></div>
+                    <span class="connector-label">WebSocket</span>
+                  </div>
+                </div>
+                <div class="diagram-row">
+                  <div class="box box-cloud">
+                    <div class="box-icon">🧠</div>
+                    <span class="box-label">Azure Speech Service</span>
+                    <span class="box-sublabel">STT / TTS</span>
+                  </div>
+                </div>
+                <div class="diagram-row">
+                  <div class="connector connector-down">
+                    <div class="connector-line"></div>
+                    <span class="connector-label">Transcription</span>
+                  </div>
+                </div>
+                <div class="diagram-row">
+                  <div class="box box-server">
+                    <div class="box-icon">🤖</div>
+                    <span class="box-label">Copilot Studio</span>
+                    <span class="box-sublabel">Process & Respond</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="info-box" style="margin-top: 1.5rem;">
+              <div class="info-box-icon">💡</div>
+              <div>
+                <h4>Pros & Cons</h4>
+                <p>✓ 100+ languages • ✓ Custom voice • ✓ High accuracy<br>✗ Requires Azure subscription • ✗ Additional cost</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">🔊 DirectLine Speech Architecture</div>
+          <span class="badge badge-blue">Full Duplex</span>
+        </div>
+        <div class="card-body">
+          <div class="diagram-container">
+            <div class="diagram">
+              <div class="diagram-row">
+                <div class="box box-client" style="min-width: 180px;">
+                  <div class="box-icon">👤</div>
+                  <span class="box-label">User Device</span>
+                  <span class="box-sublabel">Microphone + Speaker</span>
+                </div>
+                <div class="connector">
+                  <span class="connector-label">Audio Stream (WebSocket)</span>
+                  <div class="connector-line" style="width: 120px;"></div>
+                </div>
+                <div class="box box-voice" style="min-width: 200px;">
+                  <div class="box-icon">🔊</div>
+                  <span class="box-label">DirectLine Speech</span>
+                  <span class="box-sublabel">Real-time STT/TTS</span>
+                </div>
+                <div class="connector">
+                  <span class="connector-label">Bot Protocol</span>
+                  <div class="connector-line" style="width: 120px;"></div>
+                </div>
+                <div class="box box-server" style="min-width: 180px;">
+                  <div class="box-icon">🤖</div>
+                  <span class="box-label">Copilot Studio</span>
+                  <span class="box-sublabel">Conversational AI</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-3" style="margin-top: 2rem;">
+            <div class="feature-card" style="border-left-color: #e74c3c;">
+              <h4>🎤 Speech-to-Text</h4>
+              <p>Real-time transcription with streaming results and interim hypothesis display.</p>
+            </div>
+            <div class="feature-card" style="border-left-color: #e74c3c;">
+              <h4>🔊 Text-to-Speech</h4>
+              <p>Natural-sounding neural voices with SSML support for expressive synthesis.</p>
+            </div>
+            <div class="feature-card" style="border-left-color: #e74c3c;">
+              <h4>🔄 Full Duplex</h4>
+              <p>Simultaneous send/receive enables natural conversation flow with interruption support.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">💻 Voice Integration Code</div>
+        </div>
+        <div class="card-body">
+          <div class="code-block">
+<span class="code-comment">// Azure Cognitive Services Speech Integration</span>
+<span class="code-keyword">import</span> * <span class="code-keyword">as</span> SpeechSDK <span class="code-keyword">from</span> <span class="code-string">'microsoft-cognitiveservices-speech-sdk'</span>;
+<span class="code-keyword">import</span> { createCognitiveServicesSpeechServicesPonyfillFactory } <span class="code-keyword">from</span> <span class="code-string">'botframework-webchat'</span>;
+
+<span class="code-comment">// Create speech config</span>
+<span class="code-keyword">const</span> speechConfig = SpeechSDK.SpeechConfig.<span class="code-func">fromSubscription</span>(
+  <span class="code-string">'YOUR_SPEECH_KEY'</span>,
+  <span class="code-string">'YOUR_REGION'</span>
+);
+speechConfig.speechRecognitionLanguage = <span class="code-string">'en-GB'</span>;
+speechConfig.speechSynthesisVoiceName = <span class="code-string">'en-GB-SoniaNeural'</span>;
+
+<span class="code-comment">// Create ponyfill for WebChat</span>
+<span class="code-keyword">const</span> ponyfill = <span class="code-func">createCognitiveServicesSpeechServicesPonyfillFactory</span>({
+  credentials: {
+    region: <span class="code-string">'YOUR_REGION'</span>,
+    subscriptionKey: <span class="code-string">'YOUR_SPEECH_KEY'</span>
+  }
+});
+
+<span class="code-comment">// Render WebChat with voice</span>
+&lt;<span class="code-func">ReactWebChat</span>
+  directLine={directLine}
+  webSpeechPonyfillFactory={ponyfill}
+/&gt;
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Theming Section -->
+    <section id="theming" class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);">🎨</div>
+        <div>
+          <h2>Theming & Styling Options</h2>
+          <span class="badge badge-orange">Customization</span>
+        </div>
+      </div>
+      <p class="section-description">
+        BotFramework WebChat offers multiple approaches to customize the appearance and behavior of your chat interface.
+      </p>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚡ Style Options</div>
+            <span class="badge badge-green">Easy</span>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+              Quick customization via props. Override colors, fonts, spacing, and basic UI elements.
+            </p>
+            <div class="code-block" style="font-size: 0.8rem;">
+&lt;ReactWebChat
+  styleOptions={{
+    primaryFont: <span class="code-string">'Segoe UI'</span>,
+    bubbleBackground: <span class="code-string">'#0078d4'</span>,
+    bubbleFromUserBackground: <span class="code-string">'#e1f5fe'</span>,
+    hideUploadButton: <span class="code-keyword">true</span>,
+    sendBoxHeight: 50
+  }}
+/&gt;
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎨 Style Sets</div>
+            <span class="badge badge-blue">Medium</span>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+              Complete CSS-in-JS styling with createStyleSet. Full control over component styles.
+            </p>
+            <div class="code-block" style="font-size: 0.8rem;">
+<span class="code-keyword">import</span> { createStyleSet } <span class="code-keyword">from</span> <span class="code-string">'botframework-webchat'</span>;
+
+<span class="code-keyword">const</span> styleSet = <span class="code-func">createStyleSet</span>({
+  bubble: {
+    borderRadius: 12,
+    boxShadow: <span class="code-string">'0 2px 8px rgba(0,0,0,0.1)'</span>
+  }
+});
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">✨ Fluent Theme</div>
+            <span class="badge badge-purple">Premium</span>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+              Microsoft Fluent Design System. Teams/M365 look with FluentThemeProvider.
+            </p>
+            <div class="code-block" style="font-size: 0.8rem;">
+<span class="code-keyword">import</span> { FluentThemeProvider }
+  <span class="code-keyword">from</span> <span class="code-string">'botframework-webchat-fluent-theme'</span>;
+
+&lt;<span class="code-func">FluentThemeProvider</span>&gt;
+  &lt;<span class="code-func">ReactWebChat</span> ... /&gt;
+&lt;/<span class="code-func">FluentThemeProvider</span>&gt;
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">🔧 Middleware & Custom Components</div>
+        </div>
+        <div class="card-body">
+          <div class="diagram-container">
+            <div class="layers" style="max-width: 800px;">
+              <div class="layer layer-1">
+                <div class="layer-title">🖥️ Activity Middleware</div>
+                <div class="layer-desc">Custom rendering for specific activity types (cards, attachments, messages)</div>
+              </div>
+              <div class="layer layer-2">
+                <div class="layer-title">🎯 Attachment Middleware</div>
+                <div class="layer-desc">Custom attachment renderers for Adaptive Cards, Hero Cards, images</div>
+              </div>
+              <div class="layer layer-3">
+                <div class="layer-title">⌨️ Send Box Middleware</div>
+                <div class="layer-desc">Custom input components, suggestions, attachments picker</div>
+              </div>
+              <div class="layer layer-4">
+                <div class="layer-title">🎨 Avatar Middleware</div>
+                <div class="layer-desc">Custom bot/user avatars, status indicators, presence</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="code-block" style="margin-top: 2rem;">
+<span class="code-comment">// Custom Activity Middleware Example</span>
+<span class="code-keyword">const</span> activityMiddleware = () => next => card => {
+  <span class="code-keyword">if</span> (card.activity.type === <span class="code-string">'message'</span> && card.activity.text?.includes(<span class="code-string">'CUSTOM'</span>)) {
+    <span class="code-keyword">return</span> () => &lt;<span class="code-func">CustomMessageCard</span> activity={card.activity} /&gt;;
+  }
+  <span class="code-keyword">return</span> <span class="code-func">next</span>(card);
+};
+
+&lt;<span class="code-func">ReactWebChat</span>
+  directLine={directLine}
+  activityMiddleware={activityMiddleware}
+/&gt;
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section id="comparison" class="section">
+      <div class="section-header">
+        <div class="section-icon blue">⚖️</div>
+        <div>
+          <h2>Integration Comparison</h2>
+          <span class="badge badge-blue">Decision Guide</span>
+        </div>
+      </div>
+      <p class="section-description">
+        Choose the right integration approach based on your requirements for authentication, data access, and user experience.
+      </p>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Feature Comparison</div>
+        </div>
+        <div class="card-body">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>🎫 Token Endpoint</th>
+                <th>🔑 M365 Agents SDK</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>User Sign-in Required</strong></td>
+                <td><span class="cross">❌ No</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+              <tr>
+                <td><strong>Anonymous Access</strong></td>
+                <td><span class="check">✅ Yes</span></td>
+                <td><span class="cross">❌ No</span></td>
+              </tr>
+              <tr>
+                <td><strong>User Identity in Bot</strong></td>
+                <td><span class="cross">❌ No</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+              <tr>
+                <td><strong>SSO with Microsoft 365</strong></td>
+                <td><span class="cross">❌ No</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+              <tr>
+                <td><strong>SharePoint/Dataverse Access</strong></td>
+                <td><span class="cross">❌ No</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+              <tr>
+                <td><strong>Implementation Complexity</strong></td>
+                <td>🟢 Low</td>
+                <td>🟠 Medium-High</td>
+              </tr>
+              <tr>
+                <td><strong>Azure AD App Required</strong></td>
+                <td><span class="cross">❌ No</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+              <tr>
+                <td><strong>Fluent UI Theme Support</strong></td>
+                <td><span class="check">✅ Yes</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+              <tr>
+                <td><strong>Voice Support</strong></td>
+                <td><span class="check">✅ Yes</span></td>
+                <td><span class="check">✅ Yes</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 2rem;">
+        <div class="card">
+          <div class="card-header" style="background: rgba(16, 124, 16, 0.1);">
+            <div class="card-title" style="color: var(--success);">
+              🎫 Use Token Endpoint When...
+            </div>
+          </div>
+          <div class="card-body">
+            <ul style="list-style: none; padding: 0;">
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--success);">✓</span> Building a public-facing website
+              </li>
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--success);">✓</span> Users should NOT need to sign in
+              </li>
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--success);">✓</span> Bot uses only public knowledge sources
+              </li>
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--success);">✓</span> Simpler deployment is preferred
+              </li>
+              <li style="padding: 0.75rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--success);">✓</span> Citizen services / customer support
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header" style="background: rgba(92, 45, 145, 0.1);">
+            <div class="card-title" style="color: var(--secondary);">
+              🔑 Use M365 Agents SDK When...
+            </div>
+          </div>
+          <div class="card-body">
+            <ul style="list-style: none; padding: 0;">
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--secondary);">✓</span> Building an enterprise internal app
+              </li>
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--secondary);">✓</span> Bot needs to know who the user is
+              </li>
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--secondary);">✓</span> Access to user's SharePoint/Dataverse
+              </li>
+              <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--secondary);">✓</span> Integrating with Teams or SharePoint
+              </li>
+              <li style="padding: 0.75rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--secondary);">✓</span> SSO with Microsoft 365 required
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">🏗️ Architecture Decision Tree</div>
+        </div>
+        <div class="card-body">
+          <div class="diagram-container">
+            <div class="diagram" style="gap: 1rem;">
+              <div class="diagram-row">
+                <div class="box box-neutral" style="min-width: 300px;">
+                  <div class="box-icon">❓</div>
+                  <span class="box-label">Do users need to sign in?</span>
+                </div>
+              </div>
+              <div class="diagram-row">
+                <div style="display: flex; gap: 4rem;">
+                  <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span style="color: var(--success); font-weight: 600; margin-bottom: 0.5rem;">NO →</span>
+                    <div class="box box-auth" style="min-width: 200px;">
+                      <div class="box-icon">🎫</div>
+                      <span class="box-label">Token Endpoint</span>
+                      <span class="box-sublabel">Anonymous Access</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span style="color: var(--secondary); font-weight: 600; margin-bottom: 0.5rem;">YES →</span>
+                    <div class="box box-server" style="min-width: 200px;">
+                      <div class="box-icon">🔑</div>
+                      <span class="box-label">M365 Agents SDK</span>
+                      <span class="box-sublabel">Authenticated Access</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="diagram-row">
+                <div style="display: flex; gap: 4rem;">
+                  <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">+ Voice?</span>
+                    <div class="box box-voice" style="min-width: 200px;">
+                      <div class="box-icon">🎤</div>
+                      <span class="box-label">Add Speech SDK</span>
+                      <span class="box-sublabel">Azure Cognitive Services</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">+ Voice?</span>
+                    <div class="box box-voice" style="min-width: 200px;">
+                      <div class="box-icon">🔊</div>
+                      <span class="box-label">Add DirectLine Speech</span>
+                      <span class="box-sublabel">Full Duplex Audio</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 3rem 0; color: var(--text-secondary); border-top: 1px solid var(--border); margin-top: 2rem;">
+      <p style="margin-bottom: 1rem;">
+        <strong>Copilot Studio Web Chat Integration Guide</strong>
+      </p>
+      <p style="font-size: 0.9rem;">
+        Built with ❤️ for the Citizen Advice Portal | 
+        <a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/" style="color: var(--primary); text-decoration: none;">
+          Microsoft Copilot Studio Documentation
+        </a>
+      </p>
+    </footer>
+
+  </main>
+
+  <script>
+    // Smooth scrolling for navigation
+    document.querySelectorAll('.nav a').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const targetSection = document.querySelector(targetId);
+        if (targetSection) {
+          targetSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Active navigation highlighting
+    const sections = document.querySelectorAll('.section');
+    const navLinks = document.querySelectorAll('.nav a');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (scrollY >= sectionTop - 150) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${current}`) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

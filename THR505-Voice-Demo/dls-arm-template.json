@@ -1,0 +1,20 @@
+﻿{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+        {
+            "type": "Microsoft.BotService/botServices/channels",
+            "apiVersion": "2022-09-15",
+            "name": "thr505-dls-proxy/DirectLineSpeechChannel",
+            "location": "global",
+            "properties": {
+                "channelName": "DirectLineSpeechChannel",
+                "properties": {
+                    "cognitiveServiceResourceId": "/subscriptions/bda4e026-67ce-482d-95bf-4885c1ac7140/resourceGroups/rg-thr505-demo/providers/Microsoft.CognitiveServices/accounts/thr505-speech-dls",
+                    "isEnabled": true,
+                    "isDefaultBotForCogSvcAccount": true
+                }
+            }
+        }
+    ]
+}

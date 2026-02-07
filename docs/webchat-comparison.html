@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparing Web Chat Integration Approaches</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 50%, #0d1f3c 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: #ffffff;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #ffffff;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin-bottom: 30px;
+      color: #4da6ff;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: rgba(13, 31, 60, 0.6);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 16px 20px;
+      text-align: center;
+      border-bottom: 1px solid rgba(77, 166, 255, 0.15);
+    }
+
+    .comparison-table th {
+      background: linear-gradient(180deg, #1e5799 0%, #2989d8 100%);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .comparison-table th:first-child {
+      text-align: left;
+      background: #1e5799;
+    }
+
+    .comparison-table th small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+
+    .comparison-table td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: #b8d4f0;
+      background: rgba(30, 87, 153, 0.2);
+    }
+
+    .comparison-table tr:hover td {
+      background: rgba(77, 166, 255, 0.08);
+    }
+
+    .comparison-table tr:hover td:first-child {
+      background: rgba(30, 87, 153, 0.35);
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Status indicators */
+    .check {
+      color: #4ade80;
+      font-size: 1.3rem;
+    }
+
+    .cross {
+      color: #f87171;
+      font-size: 1.3rem;
+    }
+
+    .partial {
+      color: #fbbf24;
+      font-size: 1.1rem;
+    }
+
+    .text-label {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .text-value {
+      font-size: 0.9rem;
+      color: #e2e8f0;
+    }
+
+    .recommended {
+      position: relative;
+    }
+
+    .recommended::after {
+      content: '★ RECOMMENDED';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f59e0b;
+      color: #000;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    /* Notes section */
+    .notes {
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(30, 87, 153, 0.2);
+      border-radius: 8px;
+      border-left: 4px solid #4da6ff;
+    }
+
+    .notes h3 {
+      color: #4da6ff;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+
+    .notes ul {
+      list-style: none;
+      color: #b8d4f0;
+    }
+
+    .notes li {
+      margin-bottom: 8px;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .notes li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #4da6ff;
+    }
+
+    .notes code {
+      background: rgba(77, 166, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 900px) {
+      .comparison-table {
+        font-size: 0.85rem;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        padding: 12px 10px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Comparing Web Chat Integration Approaches</h1>
+    <h2>Copilot Studio Web Chat Integration Options (Bot Framework WebChat)</h2>
+
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>
+            Web Chat using CDN
+            <small>Script tag embed</small>
+          </th>
+          <th>
+            Simple ReactWebChat
+            <small>npm package</small>
+          </th>
+          <th class="recommended">
+            Advanced ReactWebChat
+            <small>Full component control</small>
+          </th>
+          <th>
+            RenderWebChat Function
+            <small>Vanilla JS render</small>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Ease of Use</td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Easiest</div>
+          </td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Easy</div>
+          </td>
+          <td>
+            <span class="cross">✗</span>
+            <div class="text-label">Complex</div>
+          </td>
+          <td>
+            <span class="cross">✗</span>
+            <div class="text-label">Complex</div>
+          </td>
+        </tr>
+        <tr>
+          <td>Customization</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="partial">~</span></td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Medium</div>
+          </td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Full</div>
+          </td>
+        </tr>
+        <tr>
+          <td>Middleware Support</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="partial">~</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>DOM Control</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Performance</td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Fastest</div>
+          </td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Lightweight</div>
+          </td>
+          <td>
+            <span class="cross">✗</span>
+            <div class="text-label">Heavy</div>
+          </td>
+          <td>
+            <span class="cross">✗</span>
+            <div class="text-label">Heaviest</div>
+          </td>
+        </tr>
+        <tr>
+          <td>Styling Options</td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Advanced with Style Options</div>
+          </td>
+          <td><span class="check">✓</span></td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Advanced with Style Options</div>
+          </td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Full</div>
+          </td>
+        </tr>
+        <tr>
+          <td>Security</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Full Control</div>
+          </td>
+        </tr>
+        <tr>
+          <td>Build Tools Required</td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">None</div>
+          </td>
+          <td>
+            <span class="partial">~</span>
+            <div class="text-label">npm/webpack</div>
+          </td>
+          <td>
+            <span class="partial">~</span>
+            <div class="text-label">npm/webpack</div>
+          </td>
+          <td>
+            <span class="check">✓</span>
+            <div class="text-label">Optional</div>
+          </td>
+        </tr>
+        <tr>
+          <td>TypeScript Support</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Component Composition</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="partial">~</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Ideal Use Case</td>
+          <td class="text-value">Fully featured Web Chat with CDN simplicity</td>
+          <td class="text-value">Simple Bot integration</td>
+          <td class="text-value">Advanced Web Chat Bot Customization</td>
+          <td class="text-value">Enterprise-level customization & branding</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="check">✓</span>
+        <span>Fully Supported</span>
+      </div>
+      <div class="legend-item">
+        <span class="partial">~</span>
+        <span>Partial / Depends</span>
+      </div>
+      <div class="legend-item">
+        <span class="cross">✗</span>
+        <span>Not Available / Manual</span>
+      </div>
+      <div class="legend-item">
+        <span style="color: #f59e0b;">★</span>
+        <span>Recommended for most scenarios</span>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Integration Notes</h3>
+      <ul>
+        <li><strong>CDN:</strong> Use <code>&lt;script src="webchat.js"&gt;</code> - No build step required, perfect for quick prototypes</li>
+        <li><strong>Simple ReactWebChat:</strong> Import <code>ReactWebChat</code> from <code>botframework-webchat</code> - Best for basic React apps</li>
+        <li><strong>Advanced ReactWebChat:</strong> Use <code>Composer</code> + <code>BasicWebChat</code> for full customization with middleware</li>
+        <li><strong>RenderWebChat:</strong> Call <code>renderWebChat()</code> function directly for non-React or custom DOM scenarios</li>
+        <li>All approaches support <code>styleOptions</code> for theming and <code>directLine</code> for bot connection</li>
+        <li>For Copilot Studio, use the Token Endpoint for anonymous access or M365 Agents SDK for authenticated access</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

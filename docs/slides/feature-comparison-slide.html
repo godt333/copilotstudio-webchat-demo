@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Comparison - PowerPoint Slide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    /* PowerPoint Slide Container - 16:9 Aspect Ratio */
+    .slide {
+      width: 1280px;
+      height: 720px;
+      background: #ffffff;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Slide Title Area */
+    .slide-title {
+      background: linear-gradient(135deg, #0078d4 0%, #00bcf2 50%, #00d4aa 100%);
+      color: white;
+      padding: 2rem 3rem;
+      text-align: center;
+    }
+
+    .slide-title h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .slide-title p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-top: 0.5rem;
+    }
+
+    /* Table Container */
+    .table-container {
+      flex: 1;
+      padding: 2rem 3rem 3rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Comparison Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 1.05rem;
+      flex: 1;
+    }
+
+    .comparison-table thead {
+      position: sticky;
+      top: 0;
+    }
+
+    .comparison-table th {
+      background: linear-gradient(135deg, #0099e6 0%, #00b4d8 50%, #00d4aa 100%);
+      color: white;
+      padding: 1rem 1.5rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .comparison-table th:first-child {
+      border-radius: 8px 0 0 0;
+      width: 40%;
+    }
+
+    .comparison-table th:nth-child(2) {
+      width: 30%;
+      text-align: center;
+    }
+
+    .comparison-table th:last-child {
+      border-radius: 0 8px 0 0;
+      width: 30%;
+      text-align: center;
+    }
+
+    .comparison-table th .icon {
+      margin-right: 0.5rem;
+    }
+
+    .comparison-table td {
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid #e8e8e8;
+      vertical-align: middle;
+    }
+
+    .comparison-table td:first-child {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .comparison-table td:nth-child(2),
+    .comparison-table td:last-child {
+      text-align: center;
+    }
+
+    .comparison-table tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    .comparison-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .comparison-table tbody tr:last-child td:first-child {
+      border-radius: 0 0 0 8px;
+    }
+
+    .comparison-table tbody tr:last-child td:last-child {
+      border-radius: 0 0 8px 0;
+    }
+
+    /* Status Indicators */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 500;
+    }
+
+    .status-yes {
+      color: #22c55e;
+    }
+
+    .status-no {
+      color: #ef4444;
+    }
+
+    .status-low {
+      color: #22c55e;
+    }
+
+    .status-medium {
+      color: #f97316;
+    }
+
+    /* Checkmark and X icons */
+    .check-icon {
+      width: 20px;
+      height: 20px;
+      background: #22c55e;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.85rem;
+    }
+
+    .x-icon {
+      color: #ef4444;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-green {
+      background: #22c55e;
+    }
+
+    .dot-orange {
+      background: #f97316;
+    }
+
+    /* Footer */
+    .slide-footer {
+      padding: 1rem 3rem;
+      background: #f8f9fa;
+      border-top: 1px solid #e8e8e8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    /* Print styles for actual slide export */
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .slide {
+        box-shadow: none;
+        border-radius: 0;
+        width: 100%;
+        height: 100vh;
+      }
+    }
+
+    /* Responsive scaling */
+    @media (max-width: 1400px) {
+      .slide {
+        width: 100%;
+        max-width: 1280px;
+        height: auto;
+        aspect-ratio: 16 / 9;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <!-- Slide Title -->
+    <div class="slide-title">
+      <h1>📊 Feature Comparison</h1>
+      <p>Token Endpoint vs M365 Agents SDK Integration Approaches</p>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-container">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th><span class="icon">🎫</span> Token Endpoint</th>
+            <th><span class="icon">🔑</span> M365 Agents SDK</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>User Sign-in Required</td>
+            <td>
+              <span class="status status-no">
+                <span class="x-icon">✕</span> No
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Anonymous Access</td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+            <td>
+              <span class="status status-no">
+                <span class="x-icon">✕</span> No
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>User Identity in Bot</td>
+            <td>
+              <span class="status status-no">
+                <span class="x-icon">✕</span> No
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>SSO with Microsoft 365</td>
+            <td>
+              <span class="status status-no">
+                <span class="x-icon">✕</span> No
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>SharePoint/Dataverse Access</td>
+            <td>
+              <span class="status status-no">
+                <span class="x-icon">✕</span> No
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Implementation Complexity</td>
+            <td>
+              <span class="status status-low">
+                <span class="dot dot-green"></span> Low
+              </span>
+            </td>
+            <td>
+              <span class="status status-medium">
+                <span class="dot dot-orange"></span> Medium-High
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Azure AD App Required</td>
+            <td>
+              <span class="status status-no">
+                <span class="x-icon">✕</span> No
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Fluent UI Theme Support</td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Voice Support</td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+            <td>
+              <span class="status status-yes">
+                <span class="check-icon">✓</span> Yes
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="slide-footer">
+      <span>Copilot Studio Web Chat Integration</span>
+      <span>THR505 - Integrating and Branding Copilot Studio</span>
+    </div>
+  </div>
+</body>
+</html>

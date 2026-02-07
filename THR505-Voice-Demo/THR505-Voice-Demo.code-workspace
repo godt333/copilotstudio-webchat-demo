@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "BotFramework-WebChat-compulim",
+			"path": "c:\\Users\\josdel\\OneDrive - Microsoft\\Microsoft\\7.- Learning_Training\\TechReady\\TechReady26\\THR505 - Integration and branding Copilot Studio with web chat\\Artifacts\\GitHub Repos\\BotFramework-WebChat-compulim"
+		},
+		{
+			"name": "BotFramework-WebChat",
+			"path": "c:\\Users\\josdel\\OneDrive - Microsoft\\Microsoft\\7.- Learning_Training\\TechReady\\TechReady26\\THR505 - Integration and branding Copilot Studio with web chat\\Artifacts\\GitHub Repos\\BotFramework-WebChat"
+		},
+		{
+			"name": "botframework-sdk",
+			"path": "c:\\Users\\josdel\\OneDrive - Microsoft\\Microsoft\\7.- Learning_Training\\TechReady\\TechReady26\\THR505 - Integration and branding Copilot Studio with web chat\\Artifacts\\GitHub Repos\\botframework-sdk"
+		},
+		{
+			"name": "Agents",
+			"path": "c:\\Users\\josdel\\OneDrive - Microsoft\\Microsoft\\7.- Learning_Training\\TechReady\\TechReady26\\THR505 - Integration and branding Copilot Studio with web chat\\Artifacts\\GitHub Repos\\Agents"
+		}
+	],
+	"settings": {}
+}
