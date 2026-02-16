@@ -1,4 +1,4 @@
-# UK Citizen Advice Website
+# UK Citizen Advice Website Copilot Studio Agent - Web Chat Integration Demo
 
 A modern citizen advice website built with React, TypeScript, and Fluent UI, featuring an AI-powered chat interface powered by Microsoft Copilot Studio.
 
