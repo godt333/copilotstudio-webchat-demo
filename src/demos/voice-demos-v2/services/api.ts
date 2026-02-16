@@ -17,6 +17,8 @@ export interface SpeechTokenResponse {
   expiresIn: number;
   locale: string;
   voice: string;
+  speechKey?: string;
+  customDomainHost?: string;
 }
 
 /**
@@ -44,7 +46,7 @@ export interface ApiError {
 export class ApiRequestError extends Error {
   statusCode: number;
   details?: unknown;
-  
+
   constructor(
     message: string,
     statusCode: number,

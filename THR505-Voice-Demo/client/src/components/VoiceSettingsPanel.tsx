@@ -42,31 +42,68 @@ export const LOCALE_OPTIONS = [
   { id: 'fr-FR', name: 'French (France)', flag: '🇫🇷' },
 ];
 
-// Settings interfaces
+/**
+ * Settings Interfaces
+ * ===================
+ * FROZEN: Feb 6, 2026
+ *
+ * These interfaces define the configurable settings shown in the Voice Settings Panel.
+ * Not all settings are wired to actual functionality — see the status column below.
+ *
+ * ┌───────────────────────┬──────────────────────────────────────────┬───────────┬──────────┐
+ * │ Setting               │ Controlled By                            │ Service   │ Status   │
+ * ├───────────────────────┼──────────────────────────────────────────┼───────────┼──────────┤
+ * │ locale                │ Server fetches token for this locale     │ Azure TTS │ ✅ Works │
+ * │ voice                 │ Ponyfill speechSynthesisVoiceName        │ Azure TTS │ ✅ Works │
+ * │ speechRate            │ PatchedUtterance.rate in hook             │ Ponyfill  │ ✅ Works │
+ * │ speechPitch           │ PatchedUtterance.pitch in hook            │ Ponyfill  │ ✅ Works │
+ * │ continuousRecognition │ styleOptions.speechRecognitionContinuous  │ Web Chat  │ ✅ Works │
+ * │ autoStartMic          │ Ctrl+M event after connection             │ Client JS │ ✅ Works │
+ * │ autoResumeListening   │ Ctrl+M after bot stops speaking           │ Client JS │ ✅ Works │
+ * │ bargeInEnabled        │ BargeInController (Web Audio API)         │ Client JS │ ⚠️ Exp.  │
+ * │ bargeInSensitivity    │ BargeInController thresholds              │ Client JS │ ⚠️ Exp.  │
+ * │ interimResults        │ Web Chat DictateComposer (not exposed)    │ Web Chat  │ ❌ N/A   │
+ * │ silenceTimeoutMs      │ Azure Speech SDK Recognizer (not exposed) │ Azure STT │ ❌ N/A   │
+ * └───────────────────────┴──────────────────────────────────────────┴───────────┴──────────┘
+ *
+ * Service legend:
+ * - Azure TTS = Azure Speech Services Text-to-Speech (server-side token, client-side audio)
+ * - Azure STT = Azure Speech Services Speech-to-Text (recognizer internal config)
+ * - Ponyfill  = web-speech-cognitive-services ponyfill (wraps Azure SDK as Web Speech API)
+ * - Web Chat  = botframework-webchat styleOptions / internal behavior
+ * - Client JS = Custom JavaScript in the React component (event dispatch, useEffect hooks)
+ *
+ * DirectLineSpeechSettings is kept for reference but NOT used in Tab 1 or Tab 2.
+ * It documents settings that would apply if True DLS was available (blocked by Azure Policy).
+ */
 export interface DirectLineSpeechSettings {
-  bargeInEnabled: boolean;
-  bargeInSensitivity: 'low' | 'medium' | 'high';
-  autoResumeListening: boolean;
-  latencyMessageEnabled: boolean;
-  latencyMessageText: string;
-  silenceTimeoutMs: number;
-  ssmlEnabled: boolean;
-  ssmlProsodyRate: string;
-  ssmlProsodyPitch: string;
+  bargeInEnabled: boolean;       // Copilot Studio → Settings → Voice
+  bargeInSensitivity: 'low' | 'medium' | 'high';  // Copilot Studio → Settings → Voice
+  autoResumeListening: boolean;  // Copilot Studio → Settings → Voice
+  latencyMessageEnabled: boolean; // Copilot Studio → Settings → Voice
+  latencyMessageText: string;    // Copilot Studio → Settings → Voice
+  silenceTimeoutMs: number;      // Azure Speech SDK recognizer config
+  ssmlEnabled: boolean;          // Azure TTS SSML format
+  ssmlProsodyRate: string;       // Azure TTS SSML <prosody rate="..."> 
+  ssmlProsodyPitch: string;      // Azure TTS SSML <prosody pitch="...">
 }
 
+/**
+ * PonyfillSettings — Used by Tab 1 (Speech Ponyfill) and Tab 2 (Proxy Bot).
+ * Both tabs use the same web-speech-cognitive-services ponyfill for speech.
+ */
 export interface PonyfillSettings {
-  locale: string;
-  voice: string;
-  bargeInEnabled: boolean;
-  bargeInSensitivity: 'low' | 'medium' | 'high';
-  continuousRecognition: boolean;
-  interimResults: boolean;
-  speechRate: number;
-  speechPitch: number;
-  autoStartMic: boolean;
-  autoResumeListening: boolean;
-  silenceTimeoutMs: number;
+  locale: string;                // Azure TTS — token region + voice locale
+  voice: string;                 // Azure TTS — speechSynthesisVoiceName
+  bargeInEnabled: boolean;       // Client JS — BargeInController ⚠️ experimental
+  bargeInSensitivity: 'low' | 'medium' | 'high';  // Client JS — volume threshold + delay
+  continuousRecognition: boolean; // Web Chat — styleOptions.speechRecognitionContinuous
+  interimResults: boolean;       // ❌ NOT WIRED — Web Chat DictateComposer internal
+  speechRate: number;            // Ponyfill — PatchedUtterance.rate ✅
+  speechPitch: number;           // Ponyfill — PatchedUtterance.pitch ✅
+  autoStartMic: boolean;         // Client JS — Ctrl+M event on connect ✅
+  autoResumeListening: boolean;  // Client JS — Ctrl+M after bot done speaking ✅
+  silenceTimeoutMs: number;      // ❌ NOT WIRED — Azure STT recognizer internal
 }
 
 interface VoiceSettingsPanelProps {

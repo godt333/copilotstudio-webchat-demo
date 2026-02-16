@@ -566,6 +566,19 @@ export function CopilotStudioChat() {
   const recognizerRef = useRef<SpeechSDK.SpeechRecognizer | null>(null);
   const synthesizerRef = useRef<SpeechSDK.SpeechSynthesizer | null>(null);
   const storeRef = useRef<ReturnType<typeof createStore> | null>(null);
+  
+  // Refs for voice state (to access current values in callbacks/subscriptions)
+  const isVoiceEnabledRef = useRef(false);
+  const voiceStatusRef = useRef<VoiceStatus>('idle');
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    isVoiceEnabledRef.current = isVoiceEnabled;
+  }, [isVoiceEnabled]);
+  
+  useEffect(() => {
+    voiceStatusRef.current = voiceStatus;
+  }, [voiceStatus]);
 
   // Check if Token Endpoint is configured
   const isConfigured = Boolean(TOKEN_ENDPOINT);
@@ -669,25 +682,77 @@ export function CopilotStudioChat() {
     }
   }, [voiceStatus]);
 
+  // Stop listening (helper function for TTS)
+  const stopListening = useCallback(() => {
+    return new Promise<void>((resolve) => {
+      if (!recognizerRef.current || voiceStatusRef.current !== 'listening') {
+        resolve();
+        return;
+      }
+      recognizerRef.current.stopContinuousRecognitionAsync(
+        () => {
+          console.log('[Voice] Stopped listening for TTS');
+          setVoiceStatus('idle');
+          voiceStatusRef.current = 'idle';
+          resolve();
+        },
+        (err) => {
+          console.error('[Voice] Error stopping for TTS:', err);
+          resolve(); // Continue anyway
+        }
+      );
+    });
+  }, []);
+
   // Speak text (text-to-speech)
-  const speakText = useCallback((text: string) => {
-    if (!synthesizerRef.current || !isVoiceEnabled) return;
+  const speakText = useCallback(async (text: string) => {
+    console.log('[Voice] speakText called, synthesizer:', !!synthesizerRef.current, 'voiceEnabled ref:', isVoiceEnabledRef.current);
+    
+    if (!synthesizerRef.current) {
+      console.warn('[Voice] No synthesizer available');
+      return;
+    }
+    
+    // Stop listening first to avoid audio conflicts
+    if (voiceStatusRef.current === 'listening') {
+      console.log('[Voice] Stopping recognition before speaking...');
+      await stopListening();
+    }
+    
+    // Strip markdown formatting for cleaner speech
+    const cleanText = text
+      .replace(/\*\*/g, '') // Remove bold
+      .replace(/\*/g, '')   // Remove italic
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to just text
+      .replace(/#{1,6}\s*/g, '') // Remove headers
+      .replace(/`[^`]+`/g, '') // Remove inline code
+      .trim();
+    
+    console.log('[Voice] Speaking:', cleanText.substring(0, 100) + '...');
     
     setVoiceStatus('speaking');
+    voiceStatusRef.current = 'speaking';
+    
     synthesizerRef.current.speakTextAsync(
-      text,
+      cleanText,
       (result) => {
+        console.log('[Voice] TTS result reason:', result.reason, SpeechSDK.ResultReason[result.reason]);
         if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
-          console.log('[Voice] Finished speaking');
+          console.log('[Voice] Finished speaking successfully');
+        } else if (result.reason === SpeechSDK.ResultReason.Canceled) {
+          const cancellation = SpeechSDK.CancellationDetails.fromResult(result);
+          console.error('[Voice] TTS canceled:', cancellation.reason, cancellation.errorDetails);
         }
         setVoiceStatus('idle');
+        voiceStatusRef.current = 'idle';
       },
       (err) => {
         console.error('[Voice] TTS error:', err);
         setVoiceStatus('idle');
+        voiceStatusRef.current = 'idle';
       }
     );
-  }, [isVoiceEnabled]);
+  }, [stopListening]);
 
   // Cleanup speech resources
   useEffect(() => {
@@ -810,8 +875,10 @@ export function CopilotStudioChat() {
           console.log('[DirectLine] Activity:', activity);
           // Auto-speak bot messages when voice is enabled
           if (activity.type === 'message' && activity.from?.role === 'bot' && activity.text) {
-            // speakText will be called if voice is enabled
-            if (isVoiceEnabled && voiceStatus === 'idle') {
+            console.log('[Voice] Bot message received, voice enabled:', isVoiceEnabledRef.current, 'status:', voiceStatusRef.current);
+            // Use refs to get current values (not stale closure values)
+            if (isVoiceEnabledRef.current && voiceStatusRef.current !== 'speaking') {
+              console.log('[Voice] Speaking bot response:', activity.text.substring(0, 50) + '...');
               speakText(activity.text);
             }
           }
@@ -831,7 +898,7 @@ export function CopilotStudioChat() {
     } finally {
       isConnecting.current = false;
     }
-  }, [isConfigured, isVoiceEnabled, voiceStatus, speakText]);
+  }, [isConfigured, speakText]);
 
   /**
    * Restart conversation with fresh token

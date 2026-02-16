@@ -136,35 +136,44 @@ To completely remove DLS code:
 - [TELEPHONY_IVR_LIVEHUB.md](./TELEPHONY_IVR_LIVEHUB.md) - Telephony IVR (working)
 - [AZURE_DEPLOYMENT.md](./AZURE_DEPLOYMENT.md) - General Azure deployment
 
-## Status
+## Status (Updated February 6, 2026)
 
 - [x] Proxy bot implemented (code in `proxy-bot/` folder)
 - [x] Azure resources created
-- [ ] Proxy bot code deployed (needs manual deployment via Azure Portal)
+- [x] Proxy bot code deployed (`quick-deploy.zip` with build-during-deployment)
+- [x] Service Principal created (`az ad sp create --id 632aab43-...`)
 - [x] DLS channel configured
-- [ ] Frontend integrated
-- [ ] End-to-end tested
+- [x] Frontend integrated (Tab 2 now uses Proxy Bot)
+- [x] End-to-end tested - **WORKING!**
 
-## Azure Resources Created (February 4, 2026)
+### Key Fix Applied: Service Principal
+
+The App Registration existed but was missing a Service Principal. Fixed with:
+```powershell
+az ad sp create --id 632aab43-dad1-485c-80ff-636b9dfdc58e
+```
+
+This allows the bot to authenticate with Azure AD and call Copilot Studio.
+
+## Azure Resources Created (February 4-6, 2026)
 
 | Resource | Name | Location | Notes |
 |----------|------|----------|-------|
 | Resource Group | `rg-thr505-demo` | eastus | Created for this demo |
-| Speech Services | `thr505-speech` | eastus | For DLS channel |
-| App Service Plan | `thr505-dls-proxy-plan` | westus | B1 tier, Linux |
-| App Service | `thr505-dls-proxy-bot` | westus | Node.js 20 |
+| Speech Services | `thr505-speech` | eastus | For Speech SDK (ponyfill) |
+| App Service Plan | `thr505-dls-proxy-plan` | westus | F1 tier (free), Linux |
+| App Service | `thr505-dls-proxy-bot` | westus | Node.js 20, **DEPLOYED & WORKING** |
 | Azure Bot Service | `thr505-dls-proxy` | global | Standard tier |
 | Azure AD App | `thr505-dls-proxy-bot` | - | App ID: `632aab43-dad1-485c-80ff-636b9dfdc58e` |
-| DLS Channel | DirectLineSpeechChannel | - | Enabled on bot |
+| Service Principal | `thr505-dls-proxy-bot` | - | Created Feb 6, 2026 (**CRITICAL FIX**) |
+| DLS Channel | DirectLineSpeechChannel | - | Enabled but blocked by Azure Policy |
 
 ### Credentials (Keep Secure!)
 
 ```
-MICROSOFT_APP_ID=<YOUR_APP_ID>
-MICROSOFT_APP_PASSWORD=<YOUR_APP_PASSWORD>
+MICROSOFT_APP_ID=632aab43-dad1-485c-80ff-636b9dfdc58e
+MICROSOFT_APP_PASSWORD=<stored-in-azure-keyvault>
 ```
-
-> ⚠️ **Note:** Store actual credentials in Azure Key Vault or environment variables, never in source control.
 
 ## Manual Deployment Steps (To Complete Setup)
 
@@ -220,4 +229,41 @@ Once the proxy bot is deployed and working, update the frontend:
 ---
 
 *Created: February 4, 2026*
-*Last Updated: February 4, 2026*
+*Last Updated: February 6, 2026*
+
+---
+
+## Deployment Method That Worked
+
+After multiple failed attempts with various deployment methods, the successful approach was:
+
+### 1. Create `quick-deploy.zip`
+A minimal zip containing only:
+- `index.js`
+- `bot.js`
+- `copilotClient.js`
+- `package.json`
+
+**No node_modules!** Let Azure install them during deployment.
+
+### 2. Configure App Settings
+```powershell
+az webapp config appsettings set -g rg-thr505-demo -n thr505-dls-proxy-bot \
+  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true WEBSITE_RUN_FROM_PACKAGE=0
+```
+
+### 3. Deploy the zip
+```powershell
+az webapp deploy -g rg-thr505-demo -n thr505-dls-proxy-bot \
+  --src-path quick-deploy.zip --type zip
+```
+
+### 4. Create Service Principal (CRITICAL!)
+```powershell
+az ad sp create --id 632aab43-dad1-485c-80ff-636b9dfdc58e
+```
+
+### 5. Restart the app
+```powershell
+az webapp restart --name thr505-dls-proxy-bot --resource-group rg-thr505-demo
+```

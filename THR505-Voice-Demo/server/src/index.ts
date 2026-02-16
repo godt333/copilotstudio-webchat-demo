@@ -20,10 +20,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
+import { createServer } from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 
 import { config, validateConfig } from './config/env';
 import speechRoutes from './routes/speechRoutes';
 import directLineRoutes from './routes/directLineRoutes';
+import { handleVoiceLiveConnection } from './routes/voiceLiveRoutes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 /**
@@ -200,10 +203,30 @@ async function startServer(): Promise<void> {
     // Create the Express app
     const app = createApp();
 
+    // Create HTTP server from Express app (needed for WebSocket upgrade)
+    const server = createServer(app);
+
+    // Create WebSocket server for Voice Live API
+    const wss = new WebSocketServer({ noServer: true });
+
+    // Handle WebSocket upgrade requests
+    server.on('upgrade', (request, socket, head) => {
+      const url = request.url || '';
+
+      if (url.startsWith('/api/voicelive/ws')) {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          handleVoiceLiveConnection(ws, request);
+        });
+      } else {
+        // Reject non-VLA WebSocket connections
+        socket.destroy();
+      }
+    });
+
     // Start listening
     const port = config.server.port;
     
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log('🚀 Server is running!');
       console.log('');
       console.log(`   Local:   http://localhost:${port}`);
@@ -216,6 +239,7 @@ async function startServer(): Promise<void> {
       console.log(`   GET  /api/directline/token          - Direct Line token`);
       console.log(`   GET  /api/directline/livehubToken   - LiveHub telephony token`);
       console.log(`   POST /api/directline/refresh        - Refresh token`);
+      console.log(`   WS   /api/voicelive/ws              - Voice Live API proxy`);
       console.log('');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('  Waiting for requests...');

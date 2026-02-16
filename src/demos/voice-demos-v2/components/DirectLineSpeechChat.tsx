@@ -1,25 +1,39 @@
 /**
- * DirectLineSpeechChat Component (Proxy Bot Mode)
- * ================================================
+ * DirectLineSpeechChat Component (Tab 2: Proxy Bot)
+ * ==================================================
+ * FROZEN: Feb 6, 2026
+ *
  * Web Chat component using Proxy Bot for voice integration.
- * 
- * This demonstrates the BOT MIDDLEWARE architecture:
- * - Client connects to Proxy Bot via Direct Line
- * - Proxy Bot forwards messages to Copilot Studio
- * - Azure Speech Services for voice (STT/TTS)
- * 
- * Architecture: Client → Proxy Bot → Copilot Studio
- * 
- * Benefits of Proxy Bot:
- * - Custom middleware and logging
- * - Authentication/authorization layer
- * - Message transformation
- * - Analytics and telemetry
- * 
+ * Messages go through the Proxy Bot; speech is client-side ponyfill.
+ *
+ * Architecture: Browser → Direct Line → Proxy Bot → Copilot Studio
+ *              Browser → Azure Speech SDK ponyfill → speakers/microphone
+ *
+ * The Proxy Bot (thr505-dls-proxy-bot.azurewebsites.net) is an Azure Bot
+ * Service app that receives messages via Direct Line and forwards them to
+ * the Copilot Studio agent. This adds a middleware layer for logging,
+ * auth, and message transformation.
+ *
+ * Settings wired in this component:
+ * - continuousRecognition → styleOptions.speechRecognitionContinuous (useMemo)
+ * - autoStartMic → Ctrl+M keyboard event 500ms after 'connected' (useEffect)
+ * - autoResumeListening → Ctrl+M 300ms after speechActivity 'speaking'→'idle' (useEffect)
+ * - bargeInEnabled/Sensitivity → BargeInController.setConfig() (useEffect)
+ * - onStopSpeaking → speechSynthesisRef.current.cancel() (passed to middleware)
+ *
+ * Settings wired in the hook (useDirectLineSpeechConnection):
+ * - locale, voice, speechRate, speechPitch (see hook docs)
+ *
+ * Settings NOT wired (displayed in panel but non-functional):
+ * - interimResults — Web Chat DictateComposer internal
+ * - silenceTimeoutMs — Azure Speech SDK recognizer internal
+ *
+ * Barge-in status: ⚠️ EXPERIMENTAL (same as Tab 1)
+ *
  * DEMO TIPS:
  * - Show the microphone button in the Web Chat
  * - Explain the proxy bot middleware concept
- * - Compare with direct Copilot Studio connection (Ponyfill tab)
+ * - Compare with direct Copilot Studio connection (Tab 1)
  */
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -27,24 +41,25 @@ import ReactWebChat, { createStore } from 'botframework-webchat';
 import { useDirectLineSpeechConnection } from '../hooks/useDirectLineSpeechConnection';
 import DebugPanel from './DebugPanel';
 import KeyboardShortcuts from './KeyboardShortcuts';
-import CodePanel from './CodePanel';
-import type { ActiveCodeSection } from './CodePanel';
-import VoiceSettingsPanel from './VoiceSettingsPanel';
-import type { DirectLineSpeechSettings } from './VoiceSettingsPanel';
+import VoiceSettingsPanel, { VOICE_OPTIONS } from './VoiceSettingsPanel';
+import type { PonyfillSettings } from './VoiceSettingsPanel';
 import sounds, { setSoundEnabled } from '../utils/sounds';
 import { createSpeechMiddleware, BargeInController } from '../utils/textUtils';
+import ProxyBotInfoPanels from './ProxyBotInfoPanels';
 
-// Default Direct Line Speech settings
-const DEFAULT_DLS_SETTINGS: DirectLineSpeechSettings = {
+// Default Ponyfill settings for Proxy Bot (Tab 2 uses Speech Ponyfill approach)
+const DEFAULT_PONYFILL_SETTINGS: PonyfillSettings = {
+  locale: 'en-US',
+  voice: 'en-US-JennyNeural',
   bargeInEnabled: true,
   bargeInSensitivity: 'medium',
+  continuousRecognition: true,
+  interimResults: true,
+  speechRate: 1.0,
+  speechPitch: 1.0,
+  autoStartMic: false,
   autoResumeListening: true,
-  latencyMessageEnabled: true,
-  latencyMessageText: 'Just a moment...',
   silenceTimeoutMs: 3000,
-  ssmlEnabled: true,
-  ssmlProsodyRate: 'medium',
-  ssmlProsodyPitch: 'medium',
 };
 
 // Quick reply suggestions
@@ -107,14 +122,19 @@ const webChatStyleOptions = {
 export const DirectLineSpeechChat: React.FC = () => {
   // Enhanced state
   const [showDebugPanel, setShowDebugPanel] = useState(false);
-  const [showCodePanel, setShowCodePanel] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const [dlsSettings, setDlsSettings] = useState<DirectLineSpeechSettings>(DEFAULT_DLS_SETTINGS);
+  const [ponyfillSettings, setPonyfillSettings] = useState<PonyfillSettings>(DEFAULT_PONYFILL_SETTINGS);
+  const [selectedLocale, setSelectedLocale] = useState('en-US');
+  const [selectedVoice, setSelectedVoice] = useState('en-US-JennyNeural');
   const [soundEnabled, setSoundEnabledState] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
   const [chatKey, setChatKey] = useState(0);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const [innerTab, setInnerTab] = useState<'chat' | 'architecture' | 'connection' | 'resources'>('chat');
   const prevConnectionStatus = useRef<string>('idle');
-  const bargeInControllerRef = useRef<BargeInController | null>(null);
+  const prevSpeechActivity = useRef<string>('idle'); // Track previous speech activity for autoResumeListening
+  // Create barge-in controller immediately (synchronously) so it's available for store creation
+  const bargeInControllerRef = useRef<BargeInController>(new BargeInController());
   
   // Track speech activity from Web Chat events
   const [speechActivity, setSpeechActivity] = useState<'idle' | 'listening' | 'processing' | 'speaking'>('idle');
@@ -122,41 +142,105 @@ export const DirectLineSpeechChat: React.FC = () => {
   const {
     adapters,
     connectionStatus,
+    speechSynthesisRef,
     errorMessage,
     listeningStatus: _hookListeningStatus, // We'll use our own tracked state
     region,
     locale,
     conversationId,
     connect,
+    disconnect,
     retry,
-  } = useDirectLineSpeechConnection();
+  } = useDirectLineSpeechConnection({
+    locale: selectedLocale,
+    voice: selectedVoice,
+    // Pass all speech settings from ponyfillSettings
+    speechRate: ponyfillSettings.speechRate,
+    speechPitch: ponyfillSettings.speechPitch,
+    interimResults: ponyfillSettings.interimResults,
+    continuousRecognition: ponyfillSettings.continuousRecognition,
+    silenceTimeoutMs: ponyfillSettings.silenceTimeoutMs,
+  });
 
-  // Connect on mount
+  // Store connect in ref to avoid stale closure
+  const connectRef = useRef(connect);
+  connectRef.current = connect;
+
+  // Connect on mount - only once
   useEffect(() => {
-    connect();
-  }, [connect]);
+    console.log('🔌 DirectLineSpeechChat mounted, calling connect()...');
+    connectRef.current();
+  }, []);
 
   // Play sound effects on connection status change
   useEffect(() => {
     if (prevConnectionStatus.current !== connectionStatus) {
       if (connectionStatus === 'connected' && prevConnectionStatus.current !== 'connected') {
         sounds.connected();
+        
+        // Auto-start mic if enabled in settings
+        if (ponyfillSettings.autoStartMic) {
+          console.log('🎤 Auto-starting microphone...');
+          setTimeout(() => {
+            const micBtn = document.querySelector('.chat-container button[aria-label*="Microphone"]') as HTMLButtonElement
+              || document.querySelector('.chat-container button[title*="Microphone"]') as HTMLButtonElement
+              || document.querySelector('.chat-container .webchat__microphone-button button') as HTMLButtonElement
+              || document.querySelector('.chat-container [class*="microphone"] button') as HTMLButtonElement;
+            if (micBtn) {
+              console.log('🎤 Found mic button, clicking...');
+              micBtn.click();
+            } else {
+              console.warn('🎤 Mic button not found in Web Chat DOM');
+            }
+          }, 800);
+        }
       } else if (connectionStatus === 'error') {
         sounds.error();
       }
       prevConnectionStatus.current = connectionStatus;
     }
-  }, [connectionStatus]);
+  }, [connectionStatus, ponyfillSettings.autoStartMic]);
 
-  // Memoize style options to prevent unnecessary re-renders
-  const styleOptions = useMemo(() => webChatStyleOptions, []);
-
-  // Initialize barge-in controller
+  // Auto-resume listening when bot finishes speaking (if enabled)
   useEffect(() => {
-    const controller = new BargeInController();
+    // Only resume if:
+    // 1. autoResumeListening is enabled
+    // 2. We just finished speaking (was 'speaking', now 'idle')
+    // 3. We're connected
+    if (
+      ponyfillSettings.autoResumeListening &&
+      prevSpeechActivity.current === 'speaking' &&
+      speechActivity === 'idle' &&
+      connectionStatus === 'connected'
+    ) {
+      console.log('🎤 Auto-resuming listening after bot finished speaking...');
+      setTimeout(() => {
+        const micBtn = document.querySelector('.chat-container button[aria-label*="Microphone"]') as HTMLButtonElement
+          || document.querySelector('.chat-container button[title*="Microphone"]') as HTMLButtonElement
+          || document.querySelector('.chat-container .webchat__microphone-button button') as HTMLButtonElement
+          || document.querySelector('.chat-container [class*="microphone"] button') as HTMLButtonElement;
+        if (micBtn) {
+          micBtn.click();
+        }
+      }, 300);
+    }
+    prevSpeechActivity.current = speechActivity;
+  }, [speechActivity, ponyfillSettings.autoResumeListening, connectionStatus]);
+
+  // Memoize style options - dynamic based on ponyfillSettings
+  const styleOptions = useMemo(() => ({
+    ...webChatStyleOptions,
+    speechRecognitionContinuous: ponyfillSettings.continuousRecognition,
+  }), [ponyfillSettings.continuousRecognition]);
+
+  // Initialize barge-in controller audio (controller already created in ref)
+  useEffect(() => {
+    const controller = bargeInControllerRef.current;
+    controller.setConfig(ponyfillSettings.bargeInEnabled, ponyfillSettings.bargeInSensitivity);
+    
+    // Initialize audio asynchronously
     controller.initialize().then(() => {
-      controller.setConfig(dlsSettings.bargeInEnabled, dlsSettings.bargeInSensitivity);
-      bargeInControllerRef.current = controller;
+      console.log('🎤 Barge-in controller audio initialized');
     });
     
     return () => {
@@ -166,24 +250,15 @@ export const DirectLineSpeechChat: React.FC = () => {
 
   // Update barge-in controller when settings change
   useEffect(() => {
-    if (bargeInControllerRef.current) {
-      bargeInControllerRef.current.setConfig(
-        dlsSettings.bargeInEnabled,
-        dlsSettings.bargeInSensitivity
-      );
-    }
-  }, [dlsSettings.bargeInEnabled, dlsSettings.bargeInSensitivity]);
-
-  // Function to stop speech synthesis (for barge-in)
-  const stopSpeaking = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      console.log('🛑 Speech synthesis cancelled (barge-in)');
-    }
-  }, []);
+    bargeInControllerRef.current.setConfig(
+      ponyfillSettings.bargeInEnabled,
+      ponyfillSettings.bargeInSensitivity
+    );
+  }, [ponyfillSettings.bargeInEnabled, ponyfillSettings.bargeInSensitivity]);
 
   // Create Web Chat store with speech middleware and barge-in support
   // Re-create store when chatKey changes (on clear) to reset all state
+  // Barge-in now dispatches WEB_CHAT/STOP_SPEAKING_ACTIVITY through the store directly
   const store = useMemo(() => createStore(
     {},
     createSpeechMiddleware({
@@ -191,33 +266,23 @@ export const DirectLineSpeechChat: React.FC = () => {
         console.log(`🎙️ Speech activity changed: ${activity}`);
         setSpeechActivity(activity);
       },
-      bargeInController: bargeInControllerRef.current ?? undefined,
-      onStopSpeaking: stopSpeaking,
+      bargeInController: bargeInControllerRef.current,
+      onStopSpeaking: () => {
+        console.log('🛑 Cancelling ponyfill speechSynthesis directly');
+        speechSynthesisRef.current?.cancel();
+      },
     })
-  ), [stopSpeaking, chatKey]);
-
-  // Derive active code section for CodePanel using our tracked speech activity
-  const activeCodeSection = useMemo((): ActiveCodeSection => {
-    if (connectionStatus === 'error') return 'error';
-    if (connectionStatus === 'fetching-token') return 'fetching-tokens';
-    if (connectionStatus === 'connecting') return 'connecting';
-    if (connectionStatus === 'connected') {
-      if (speechActivity === 'listening') return 'listening';
-      if (speechActivity === 'processing') return 'processing';
-      if (speechActivity === 'speaking') return 'speaking';
-      return 'connected';
-    }
-    return 'idle';
-  }, [connectionStatus, speechActivity]);
+  ), [chatKey, speechSynthesisRef]);
 
   // Handle clear chat
   const handleClearChat = useCallback(() => {
     sounds.clear();
+    disconnect();
     setSpeechActivity('idle'); // Reset speech activity for CodePanel
     setChatKey(prev => prev + 1);
     setShowWelcome(true);
     setTimeout(() => connect(), 100);
-  }, [connect]);
+  }, [connect, disconnect]);
 
   // Handle toggle sound
   const handleToggleSound = useCallback(() => {
@@ -225,6 +290,45 @@ export const DirectLineSpeechChat: React.FC = () => {
     setSoundEnabledState(newState);
     setSoundEnabled(newState);
   }, [soundEnabled]);
+
+  // Handle settings change from the settings panel
+  const handlePonyfillSettingsChange = useCallback((newSettings: PonyfillSettings) => {
+    // Check if any settings that require reconnection changed
+    const localeChanged = newSettings.locale !== selectedLocale;
+    const voiceChanged = newSettings.voice !== selectedVoice;
+    const speechRateChanged = newSettings.speechRate !== ponyfillSettings.speechRate;
+    const speechPitchChanged = newSettings.speechPitch !== ponyfillSettings.speechPitch;
+    const silenceTimeoutChanged = newSettings.silenceTimeoutMs !== ponyfillSettings.silenceTimeoutMs;
+    const continuousChanged = newSettings.continuousRecognition !== ponyfillSettings.continuousRecognition;
+    const interimChanged = newSettings.interimResults !== ponyfillSettings.interimResults;
+    
+    const needsReconnect = localeChanged || voiceChanged || speechRateChanged || 
+                           speechPitchChanged || silenceTimeoutChanged || 
+                           continuousChanged || interimChanged;
+    
+    // Update state first
+    setPonyfillSettings(newSettings);
+    
+    if (localeChanged) {
+      setSelectedLocale(newSettings.locale);
+    }
+    if (voiceChanged) {
+      setSelectedVoice(newSettings.voice);
+    }
+    
+    if (needsReconnect) {
+      console.log(`🔄 Settings changed - reconnecting with new settings...`);
+      console.log(`   Locale: ${newSettings.locale}, Voice: ${newSettings.voice}`);
+      console.log(`   Rate: ${newSettings.speechRate}, Pitch: ${newSettings.speechPitch}`);
+      // Show feedback and close settings panel
+      setShowSettingsPanel(false);
+      setSettingsMessage(`🔄 Applying new settings (voice: ${newSettings.voice.split('-').slice(2).join(' ')})...`);
+      setTimeout(() => setSettingsMessage(null), 3000);
+      // Reconnect with new settings - use ref to get latest connect function
+      disconnect();
+      setTimeout(() => connectRef.current(), 500);
+    }
+  }, [selectedLocale, selectedVoice, ponyfillSettings, disconnect]);
 
   // Handle quick reply click
   const handleQuickReply = useCallback((text: string) => {
@@ -326,16 +430,6 @@ export const DirectLineSpeechChat: React.FC = () => {
         {/* Clear chat button */}
         <button className="clear-chat-btn" onClick={handleClearChat} title="Clear chat (Ctrl+L)">
           🗑️ Clear
-        </button>
-
-        {/* Toggle code panel button */}
-        <button 
-          className={`toggle-code-btn ${showCodePanel ? 'active' : ''}`}
-          onClick={() => setShowCodePanel(prev => !prev)}
-          title="Toggle code view (Ctrl+K)"
-        >
-          <span className="code-icon">{'</>'}</span>
-          {showCodePanel ? 'Hide Code' : 'Show Code'}
         </button>
 
         {/* Settings button */}
@@ -454,31 +548,65 @@ export const DirectLineSpeechChat: React.FC = () => {
         webSpeechPonyfillFactory={(adapters as any).webSpeechPonyfillFactory}
         store={store}
         styleOptions={styleOptions}
-        locale={locale || 'en-GB'}
+        locale={selectedLocale}
       />
     );
   };
 
+  // Get voice display name
+  const getVoiceDisplayName = () => {
+    const localeVoices = VOICE_OPTIONS[selectedLocale as keyof typeof VOICE_OPTIONS];
+    const voice = localeVoices?.find(v => v.id === selectedVoice);
+    return voice?.name || selectedVoice;
+  };
+
   return (
     <div className="chat-container">
+      {/* Inner Sub-Tab Navigation */}
+      <nav className="inner-tab-nav proxy-accent">
+        {([
+          { id: 'chat', icon: '💬', label: 'ChatBot' },
+          { id: 'architecture', icon: '🏗️', label: 'Architecture' },
+          { id: 'connection', icon: '🔌', label: 'Connection Flow' },
+          { id: 'resources', icon: '📚', label: 'Resources' },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            className={`inner-tab-btn ${innerTab === tab.id ? 'active' : ''}`}
+            onClick={() => setInnerTab(tab.id)}
+          >
+            <span className="inner-tab-icon">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {innerTab === 'chat' ? (
+      <>
       {/* Info Panel */}
       <div className="info-panel">
-        <h3>🎤 Direct Line (British English)</h3>
+        <h3>🤖 Proxy Bot ({selectedLocale === 'en-US' ? 'US' : selectedLocale === 'en-GB' ? 'UK' : selectedLocale})</h3>
         <p>
-          Using Direct Line Speech for unified messaging + voice.
-          This mode uses <strong>British English</strong> with the Sonia voice.
+          Direct Line → Proxy Bot → Copilot Studio.
+          Voice: <strong>{getVoiceDisplayName()}</strong>. Click <strong>Settings</strong> to change.
         </p>
       </div>
 
       {/* Status Bar */}
       {renderStatusBar()}
 
+      {/* Settings change feedback */}
+      {settingsMessage && (
+        <div style={{ padding: '8px 16px', background: '#fff4ce', color: '#856404', borderRadius: 8, margin: '8px 16px 0', fontSize: '0.9rem', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+          {settingsMessage}
+        </div>
+      )}
+
       {/* Welcome Message */}
       {renderWelcome()}
 
-      {/* Main Content Area - Side by Side with Code Panel */}
-      <div className={`chat-with-code-container ${showCodePanel ? 'code-visible' : ''}`}>
-        {/* Chat Area */}
+      {/* Main Content Area */}
+      <div className="chat-with-code-container">
         <div className="chat-main-area">
           <div className="webchat-wrapper">
             {connectionStatus === 'error' && renderError()}
@@ -486,17 +614,6 @@ export const DirectLineSpeechChat: React.FC = () => {
             {connectionStatus === 'connected' && renderWebChat()}
           </div>
         </div>
-
-        {/* Code Panel */}
-        <CodePanel
-          mode="directlinespeech"
-          activeSection={activeCodeSection}
-          isVisible={showCodePanel}
-          onClose={() => setShowCodePanel(false)}
-          conversationId={conversationId}
-          region={region}
-          locale={locale}
-        />
       </div>
 
       {/* Debug Panel */}
@@ -510,13 +627,17 @@ export const DirectLineSpeechChat: React.FC = () => {
         />
       )}
 
-      {/* Voice Settings Panel */}
+      {/* Voice Settings Panel - Using ponyfill mode since Tab 2 now uses Speech Ponyfill */}
       <VoiceSettingsPanel
-        mode="directlinespeech"
+        mode="ponyfill"
         isVisible={showSettingsPanel}
         onClose={() => setShowSettingsPanel(false)}
-        dlsSettings={dlsSettings}
-        onDlsSettingsChange={setDlsSettings}
+        ponyfillSettings={{
+          ...ponyfillSettings,
+          locale: selectedLocale,
+          voice: selectedVoice,
+        }}
+        onPonyfillSettingsChange={handlePonyfillSettingsChange}
       />
 
       {/* Keyboard Shortcuts */}
@@ -525,6 +646,10 @@ export const DirectLineSpeechChat: React.FC = () => {
         onToggleDebug={() => setShowDebugPanel(prev => !prev)}
         onToggleSound={handleToggleSound}
       />
+      </>
+      ) : (
+        <ProxyBotInfoPanels activeTab={innerTab} />
+      )}
     </div>
   );
 };

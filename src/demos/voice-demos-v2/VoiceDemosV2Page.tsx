@@ -8,18 +8,62 @@
  * Original: THR505 - Integrating and Branding Copilot Studio with Web Chat
  */
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import DemoHeader from '../../components/layout/DemoHeader';
 import DirectLineSpeechChat from './components/DirectLineSpeechChat';
 import SpeechPonyfillChat from './components/SpeechPonyfillChat';
 import TelephonyIVR from './components/TelephonyIVR';
-import TrueDLSChat from './components/TrueDLSChat';
+import VoiceLiveAPI from './components/VoiceLiveAPI';
+import VoiceComparison from './components/VoiceComparison';
 import './index.css';
+
+// Lazy-load TrueDLSChat — the DLS SDK + Speech SDK is heavy (~5 MB) and can
+// crash Chrome's renderer (STATUS_BREAKPOINT) if loaded eagerly alongside the
+// other voice tabs.  Lazy-loading isolates the crash so only the DLS tab is
+// affected and the rest of the page continues working.
+const TrueDLSChat = React.lazy(() => import('./components/TrueDLSChat'));
+
+/**
+ * Minimal error boundary that catches crashes inside the DLS tab.
+ */
+class DLSErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: string | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(err: Error) {
+    return { hasError: true, error: err?.message ?? 'Unknown error' };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 32, textAlign: 'center' }}>
+          <h3>Direct Line Speech unavailable</h3>
+          <p style={{ color: '#a4262c' }}>{this.state.error}</p>
+          <p style={{ fontSize: '0.85rem', color: '#605e5c' }}>
+            The DLS channel may be blocked by Azure policy in this tenant.
+            Check the browser console for details.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{ marginTop: 12, padding: '8px 20px', borderRadius: 6, border: '1px solid #ccc', cursor: 'pointer' }}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * Voice integration mode - matches original THR505 modes
  */
-type VoiceMode = 'directlinespeech' | 'ponyfill' | 'truedls' | 'ivr' | 'comparison';
+type VoiceMode = 'directlinespeech' | 'ponyfill' | 'truedls' | 'voicelive' | 'ivr' | 'comparison';
 
 /**
  * Mode configuration with descriptions - from original THR505
@@ -40,8 +84,14 @@ const MODE_CONFIG = {
   truedls: {
     icon: '⚡',
     label: 'Direct Line Speech',
-    description: 'TRUE Direct Line Speech SDK - Single WebSocket for audio + messaging with server-side STT.',
-    badge: 'Bot Framework',
+    description: 'Direct Line Speech channel — unified WebSocket for both conversation and speech. Blocked in this tenant by Azure policy (see docs).',
+    badge: 'DLS',
+  },
+  voicelive: {
+    icon: '🎙️',
+    label: 'Voice Live API',
+    description: 'The next-gen replacement for DLS — server-to-server WebSocket with built-in STT, TTS, and generative AI.',
+    badge: 'New',
   },
   ivr: {
     icon: '📞',
@@ -51,9 +101,9 @@ const MODE_CONFIG = {
   },
   comparison: {
     icon: '⚖️',
-    label: 'Side-by-Side',
-    description: 'Compare Proxy Bot and Speech Ponyfill modes side by side.',
-    badge: 'Demo',
+    label: 'Compare Options',
+    description: 'Decision flow and feature comparison for all voice integration options.',
+    badge: 'Guide',
   },
 };
 
@@ -179,18 +229,20 @@ const VoiceDemosV2Page: React.FC = () => {
         {/* Chat Component - Original logic */}
         <main className="chat-main">
           {voiceMode === 'comparison' ? (
-            <div className="comparison-mode">
-              <div>
-                <div className="comparison-label">🤖 Proxy Bot (en-US)</div>
-                <DirectLineSpeechChat key="dls-compare" />
-              </div>
-              <div>
-                <div className="comparison-label">🔊 Speech Ponyfill (en-US)</div>
-                <SpeechPonyfillChat key="ponyfill-compare" />
-              </div>
-            </div>
+            <VoiceComparison />
+          ) : voiceMode === 'voicelive' ? (
+            <VoiceLiveAPI key="voicelive" />
           ) : voiceMode === 'truedls' ? (
-            <TrueDLSChat key="truedls" />
+            <DLSErrorBoundary>
+              <Suspense fallback={
+                <div style={{ padding: 32, textAlign: 'center' }}>
+                  <div className="loading-spinner" />
+                  <p>Loading Direct Line Speech module...</p>
+                </div>
+              }>
+                <TrueDLSChat key="truedls" />
+              </Suspense>
+            </DLSErrorBoundary>
           ) : voiceMode === 'directlinespeech' ? (
             <DirectLineSpeechChat key="dls" />
           ) : voiceMode === 'ponyfill' ? (

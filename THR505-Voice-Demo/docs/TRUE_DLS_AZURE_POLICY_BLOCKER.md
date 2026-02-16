@@ -105,48 +105,71 @@ Find or request access to an Azure subscription that:
 - Is NOT under the `MCAPSGovDeployPolicies` policy assignment
 - Allows `disableLocalAuth: false` on Cognitive Services
 
-### Option 3: Use Speech Ponyfill Mode (Works Now)
+### Option 3: Use Proxy Bot Mode (✅ IMPLEMENTED - Working!)
 
-The **Speech Ponyfill** approach in this demo provides equivalent functionality:
-- ✅ Voice input via microphone
-- ✅ Voice output via Text-to-Speech
-- ✅ Full conversation with Copilot Studio agent
+**As of February 6, 2026**, Tab 2 was converted from "True DLS" to "Proxy Bot" mode:
+- ✅ Voice input via microphone (client-side Speech SDK)
+- ✅ Voice output via Text-to-Speech (client-side)
+- ✅ Full conversation with Copilot Studio agent (via Proxy Bot)
 - ✅ Works with current Azure Policy settings
 
-**Architecture difference:**
-- **True DLS**: Single WebSocket (Speech + Messaging unified)
-- **Speech Ponyfill**: Direct Line WebSocket + separate Speech SDK
-
-For demo purposes, Speech Ponyfill is indistinguishable from True DLS to end users.
-
-## Current Configuration
-
-### Working (Speech Ponyfill)
+**Architecture:**
 ```
-Client → Direct Line → Copilot Studio
+Client → Direct Line → Proxy Bot (Azure App Service) → Copilot Studio
 Client → Speech SDK → Azure Speech Services (STT/TTS)
 ```
 
-### Not Working (True DLS)
+This provides the same end-user experience as True DLS, just with client-side speech processing instead of server-side.
+
+### Option 4: Use Speech Ponyfill Mode (Tab 1 - Also Working)
+
+Tab 1 uses direct connection to Copilot Studio (no proxy):
 ```
-Client → DLS Channel (WebSocket) → Proxy Bot → Copilot Studio
-         ↑
-         Requires isDefaultBotForCogSvcAccount: true
-         Blocked by Azure Policy
+Client → Direct Line → Copilot Studio (directly)
+Client → Speech SDK → Azure Speech Services (STT/TTS)
 ```
 
-## Files Modified
+## Current Configuration (Updated February 6, 2026)
 
-- `client/src/hooks/useDirectLineSpeechConnectionDLS.ts` - Returns error explaining DLS unavailability
-- `server/.env` - Uses `SPEECH_KEY=USE_AZURE_AD` for Azure AD authentication
+| Tab | Status | Architecture |
+|-----|--------|--------------|
+| Tab 1: Speech Ponyfill | ✅ Working | Direct Line → Copilot + Speech SDK |
+| Tab 2: Proxy Bot | ✅ Working | Direct Line → Proxy Bot → Copilot + Speech SDK |
+| Tab 3: Direct Line Speech | ⛔ Blocked | Shows info about Azure Policy blocker |
+| Tab 4: Telephony/IVR | ✅ Working | Phone demo |
+
+## Workaround Implementation Details
+
+### Changes Made on February 6, 2026
+
+1. **Tab 2 converted** from "True DLS" to "Proxy Bot" with client-side speech
+2. **Tab 3 renamed** to "Direct Line Speech" showing blocker information
+3. **Proxy Bot fully deployed** to Azure App Service
+4. **Service Principal created** for the App Registration (key fix!)
+
+### Files Modified
+
+- `client/src/hooks/useDirectLineSpeechConnection.ts` - Now uses Proxy Bot Direct Line token
+- `client/src/components/DirectLineSpeechChat.tsx` - Updated header documentation
+- `client/src/App.tsx` - Tab labels updated to reflect actual functionality
+- `server/src/routes/directLineRoutes.ts` - Added `/api/directline/proxyBotToken` endpoint
+- `server/.env` - Added `PROXY_BOT_DIRECT_LINE_SECRET`
+
+### Key Fix: Service Principal
+
+The Proxy Bot deployment was failing with `AADSTS7000229` because the App Registration was missing a Service Principal. Fixed with:
+```powershell
+az ad sp create --id 632aab43-dad1-485c-80ff-636b9dfdc58e
+```
 
 ## References
 
 - [Direct Line Speech Overview](https://docs.microsoft.com/azure/bot-service/directline-speech-bot)
 - [Azure Policy Exemptions](https://docs.microsoft.com/azure/governance/policy/concepts/exemption-structure)
 - [Cognitive Services Local Auth](https://docs.microsoft.com/azure/cognitive-services/cognitive-services-data-loss-prevention)
+- [Azure AD Service Principals](https://docs.microsoft.com/azure/active-directory/develop/app-objects-and-service-principals)
 
 ---
 
-**Last Updated:** February 5, 2026
+**Last Updated:** February 6, 2026
 **Author:** GitHub Copilot (automated analysis)

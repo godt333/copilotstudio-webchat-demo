@@ -166,8 +166,12 @@ export default function CdnDirectLineDemo() {
   <div id="webchat" style="height: 500px;"></div>
   <script>
     (async function () {
-      // Fetch token from your backend
-      const res = await fetch('/api/directline/token');
+      // Copilot Studio Token Endpoint (anonymous access)
+      // Get this URL from: Copilot Studio > Channels > Web app > Connection string
+      const tokenEndpoint = 'https://YOUR_ENVIRONMENT.api.powerplatform.com/powervirtualagents/botsbyschema/YOUR_BOT_ID/directline/token?api-version=2022-03-01-preview';
+      
+      // Fetch Direct Line token from Copilot Studio
+      const res = await fetch(tokenEndpoint);
       const { token } = await res.json();
       
       window.WebChat.renderWebChat({

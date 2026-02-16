@@ -439,13 +439,79 @@ Use **Speech Ponyfill** approach for demos because:
 
 ---
 
-## Current Status Summary (Updated)
+## Current Status Summary (Updated February 6, 2026)
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| Speech Ponyfill (Blue) | ✅ Working | Use this for demos with Copilot Studio |
-| Direct Line British (Green) | ✅ Working | Text-only with British voice |
-| True DLS (Purple) | ⚠️ Blocked | Requires `isDefaultBotForCogSvcAccount: true` |
-| IVR/Telephony (Orange) | ⚠️ Config Required | Needs Azure Communication Services |
+| Tab 1: Speech Ponyfill | ✅ Working | Use this for demos with Copilot Studio |
+| Tab 2: Proxy Bot | ✅ Working | Direct Line → Proxy Bot → Copilot Studio (voice!) |
+| Tab 3: Direct Line Speech | ⛔ Blocked | Azure Policy prevents `isDefaultBotForCogSvcAccount: true` |
+| Tab 4: Telephony/IVR | ✅ Working | Phone: +1 (786) 687-0264 |
 
-**The True DLS tab demonstrates the SDK connection but cannot route to the bot due to Azure configuration limitations with enterprise Speech resources.**
+**Both Tab 1 and Tab 2 now work with full voice support!**
+
+---
+
+## Issues Resolved on February 6, 2026
+
+### 19. Proxy Bot AADSTS7000229 - Missing Service Principal
+
+**Description:**  
+Proxy Bot deployed successfully but messages were not returning responses. Azure logs showed:
+```
+AADSTS7000229: The client application 632aab43-dad1-485c-80ff-636b9dfdc58e 
+is missing service principal in the tenant ba9da2c0-3331-4337-a775-ed8556d7b7e5.
+```
+
+**Root Cause:**  
+The App Registration for the Proxy Bot existed, but it was missing a **Service Principal** (Enterprise Application) in the tenant. The Service Principal is required for the bot to authenticate with Azure AD and call Copilot Studio.
+
+**Solution:**
+```powershell
+az ad sp create --id 632aab43-dad1-485c-80ff-636b9dfdc58e
+```
+
+This creates the Service Principal for the App Registration in the current tenant.
+
+---
+
+### 20. Proxy Bot node_modules Not Installed on Azure
+
+**Description:**  
+Proxy Bot deployment succeeded but app returned 503 Service Unavailable. Logs showed `Cannot find module 'dotenv'`.
+
+**Root Cause:**  
+The `node_modules.tar.gz` file was uploaded but Azure wasn't extracting it properly. The `quick-deploy.zip` method without node_modules relies on Azure's build-during-deployment.
+
+**Solution:**
+1. Set app settings for Azure to build during deployment:
+```powershell
+az webapp config appsettings set -g rg-thr505-demo -n thr505-dls-proxy-bot \
+  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true WEBSITE_RUN_FROM_PACKAGE=0
+```
+
+2. Or manually run npm install via Kudu API:
+```powershell
+$body = @{command="npm install --production"; dir="/home/site/wwwroot"} | ConvertTo-Json
+Invoke-RestMethod -Uri "https://thr505-dls-proxy-bot.scm.azurewebsites.net/api/command" \
+  -Method POST -Headers $headers -Body $body -ContentType "application/json"
+```
+
+---
+
+### 21. True DLS Blocked - Pivoted to Proxy Bot Tab
+
+**Description:**  
+True Direct Line Speech required `isDefaultBotForCogSvcAccount: true` on the DLS channel, but Azure Policy prevented this configuration.
+
+**Root Cause:**  
+- Azure Policy `MCAPSGovDeployPolicies` enforces `disableLocalAuth: true` on all Cognitive Services
+- Setting `isDefaultBotForCogSvcAccount: true` requires Speech resource key validation
+- With local auth disabled, key validation fails
+
+**Solution:**  
+Pivoted Tab 2 from "True DLS" to "Proxy Bot" architecture:
+- Tab 2 now uses Direct Line to Proxy Bot + client-side Speech SDK
+- Same end-user experience (voice in/out) with different backend architecture
+- Renamed Tab 2 to "🤖 Proxy Bot" with badge "Middleware"
+- Renamed Tab 3 to "⚡ Direct Line Speech" with badge "Bot Framework" (shows blocker info)

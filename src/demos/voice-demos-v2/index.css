@@ -5,15 +5,6 @@
  * Designed for conference/demo readiness with clear, professional styling.
  */
 
-/* Wrapper for site navigation integration */
-.voice-demos-v2-wrapper {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  width: 100%;
-  background-color: #f3f2f1;
-}
-
 /* CSS Variables for easy branding customization */
 :root {
   /* Brand colors - customize these for your organization */
@@ -2660,3 +2651,1195 @@ button[class*="microphone"].listening {
   background: var(--dls-primary);
   color: white;
 }
+
+/* =====================================================
+   DLS DEPRECATION BANNER
+   ===================================================== */
+
+.dls-deprecation-banner {
+  background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+  border: 1px solid #ffc107;
+  border-left: 4px solid #e65100;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.dls-deprecation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.dls-deprecation-header strong {
+  color: #663c00;
+  font-size: 1rem;
+}
+
+.dls-deprecation-icon {
+  font-size: 1.5rem;
+}
+
+.dls-deprecation-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #e65100;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+.dls-deprecation-text {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: #663c00;
+  line-height: 1.5;
+}
+
+.dls-deprecation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dls-deprecation-reason,
+.dls-deprecation-links {
+  display: flex;
+  gap: 8px;
+  font-size: 0.825rem;
+  color: #663c00;
+}
+
+.dls-deprecation-reason ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.dls-deprecation-reason li {
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+
+.dls-deprecation-links a {
+  color: #0078d4;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.dls-deprecation-links a:hover {
+  text-decoration: underline;
+}
+
+.dls-deprecation-separator {
+  margin: 0 6px;
+  color: #b08000;
+}
+
+/* =====================================================
+   VOICE LIVE API STYLES
+   ===================================================== */
+
+.vla-container {
+  --vla-primary: #0078d4;
+  --vla-secondary: #005a9e;
+  --vla-accent: #00bcf2;
+  --vla-bg: #f0f6ff;
+  --vla-border: #c7dff7;
+  --vla-success: #107c10;
+}
+
+/* Hero Banner */
+.vla-hero-banner {
+  background: linear-gradient(135deg, #0078d4 0%, #005a9e 60%, #003966 100%);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 16px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.vla-hero-banner::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.vla-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.vla-hero-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.vla-hero-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.vla-hero-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.vla-hero-badges {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.vla-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.vla-badge-new {
+  background: #ff8c00;
+  color: white;
+}
+
+.vla-badge-ga {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.vla-hero-description {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.95;
+}
+
+/* Section Navigation */
+.vla-section-nav {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #f3f2f1;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.vla-section-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #323130;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.vla-section-btn:hover {
+  background: rgba(0, 120, 212, 0.08);
+}
+
+.vla-section-btn.active {
+  background: white;
+  color: var(--vla-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.vla-section-icon {
+  font-size: 1rem;
+}
+
+.vla-section-label {
+  font-size: 0.8rem;
+}
+
+/* Content Area */
+.vla-content {
+  background: white;
+  border: 1px solid var(--vla-border);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 16px;
+  min-height: 400px;
+}
+
+.vla-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.vla-section-header-icon {
+  font-size: 1.5rem;
+}
+
+.vla-section-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #201f1e;
+}
+
+.vla-section-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #323130;
+  margin-bottom: 20px;
+  white-space: pre-line;
+}
+
+/* Architecture Diagram */
+.vla-diagram {
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.vla-diagram-label {
+  padding: 8px 16px;
+  background: #333;
+  color: #9cdcfe;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.vla-diagram-pre {
+  padding: 16px 20px;
+  margin: 0;
+  color: #d4d4d4;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+/* Comparison Table */
+.vla-comparison {
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.vla-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.vla-comparison-table th,
+.vla-comparison-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #edebe9;
+}
+
+.vla-comparison-table th {
+  background: #faf9f8;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #323130;
+}
+
+.vla-col-dls {
+  color: #6B2D5B !important;
+}
+
+.vla-col-vla {
+  color: var(--vla-primary) !important;
+}
+
+.vla-col-icon {
+  margin-right: 4px;
+}
+
+.vla-deprecated-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: #e65100;
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 700;
+  border-radius: 3px;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+}
+
+.vla-active-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: #107c10;
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 700;
+  border-radius: 3px;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+}
+
+.vla-feature-cell {
+  font-weight: 600;
+  color: #201f1e;
+  min-width: 120px;
+}
+
+.vla-dls-cell {
+  color: #605e5c;
+  font-size: 0.8rem;
+}
+
+.vla-vla-cell {
+  color: #323130;
+  font-size: 0.8rem;
+}
+
+/* Code Block */
+.vla-code-block {
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.vla-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #333;
+  color: #9cdcfe;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.vla-code-toggle {
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.vla-code-toggle:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.vla-code-pre {
+  padding: 16px 20px;
+  margin: 0;
+  color: #d4d4d4;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 200px;
+  transition: max-height 0.3s ease;
+}
+
+.vla-code-pre.expanded {
+  max-height: 2000px;
+}
+
+/* Migration Steps */
+.vla-migration-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vla-migration-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--vla-bg);
+  border: 1px solid var(--vla-border);
+  border-radius: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vla-migration-step:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.1);
+}
+
+.vla-step-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vla-primary);
+  color: white;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.vla-step-content strong {
+  display: block;
+  color: #201f1e;
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+}
+
+.vla-step-content p {
+  margin: 0;
+  font-size: 0.825rem;
+  color: #605e5c;
+  line-height: 1.4;
+}
+
+/* Resource Links */
+.vla-resources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vla-resource-card {
+  display: block;
+  padding: 16px;
+  background: var(--vla-bg);
+  border: 1px solid var(--vla-border);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.vla-resource-card:hover {
+  background: #e5f0ff;
+  border-color: var(--vla-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
+}
+
+.vla-resource-title {
+  font-weight: 600;
+  color: var(--vla-primary);
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.vla-external-icon {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.vla-resource-desc {
+  font-size: 0.8rem;
+  color: #605e5c;
+  line-height: 1.3;
+}
+
+/* Status Footer */
+.vla-status-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  background: #faf9f8;
+  border: 1px solid #edebe9;
+  border-radius: 8px;
+}
+
+.vla-status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.825rem;
+  color: #605e5c;
+}
+
+.vla-status-icon {
+  font-size: 1rem;
+}
+
+/* =================================================================
+   INNER SUB-TAB NAVIGATION
+   Used by Tab 1 (Speech Ponyfill), Tab 2 (Proxy Bot), Tab 4 (VLA)
+   ================================================================= */
+
+.inner-tab-nav {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-bottom: 2px solid #e8e8e8;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.inner-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #605e5c;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.inner-tab-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #323130;
+}
+
+.inner-tab-btn.active {
+  color: var(--inner-tab-accent, #0078d4);
+  border-bottom-color: var(--inner-tab-accent, #0078d4);
+  background: white;
+  font-weight: 600;
+}
+
+.inner-tab-icon {
+  font-size: 1rem;
+}
+
+/* Accent variants */
+.inner-tab-nav.ponyfill-accent {
+  --inner-tab-accent: #00a878;
+}
+
+.inner-tab-nav.proxy-accent {
+  --inner-tab-accent: #004b88;
+}
+
+.inner-tab-nav.vla-accent {
+  --inner-tab-accent: #0078d4;
+}
+
+.inner-tab-nav.telephony-accent {
+  --inner-tab-accent: #d83b01;
+}
+
+.inner-tab-nav.dls-accent {
+  --inner-tab-accent: #6B2D5B;
+}
+
+/* =================================================================
+   INFORMATIONAL PANEL CONTENT
+   Shared styles for Architecture, Connection Flow, Resources tabs
+   ================================================================= */
+
+.info-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: #fafbfc;
+}
+
+.info-panel-content.ponyfill-accent {
+  --inner-tab-accent: #00a878;
+}
+
+.info-panel-content.proxy-accent {
+  --inner-tab-accent: #004b88;
+}
+
+.info-panel-content.vla-accent {
+  --inner-tab-accent: #0078d4;
+}
+
+.info-panel-content.telephony-accent {
+  --inner-tab-accent: #d83b01;
+}
+
+.info-panel-content.dls-accent {
+  --inner-tab-accent: #6B2D5B;
+}
+
+.info-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.info-panel-header.ponyfill-accent {
+  border-bottom-color: #00a878;
+}
+
+.info-panel-header.proxy-accent {
+  border-bottom-color: #004b88;
+}
+
+.info-panel-header.vla-accent {
+  border-bottom-color: #0078d4;
+}
+
+.info-panel-header.telephony-accent {
+  border-bottom-color: #d83b01;
+}
+
+.info-panel-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #323130;
+}
+
+.info-panel-icon {
+  font-size: 1.5rem;
+}
+
+.info-panel-section {
+  margin-bottom: 24px;
+}
+
+.info-panel-section h4 {
+  font-size: 1.05rem;
+  color: #323130;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.info-panel-section p {
+  color: #605e5c;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.info-panel-section ul {
+  color: #605e5c;
+  line-height: 1.8;
+  padding-left: 20px;
+  margin: 0 0 12px;
+}
+
+.info-panel-section li {
+  margin-bottom: 6px;
+}
+
+.info-panel-section code {
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  color: #d63384;
+}
+
+/* Diagram box */
+.info-panel-diagram {
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.info-panel-diagram-label {
+  font-size: 0.75rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.info-panel-diagram pre {
+  margin: 0;
+  color: #e6edf3;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* Grid cards */
+.info-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.info-grid-card {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 16px;
+  transition: box-shadow 0.2s;
+}
+
+.info-grid-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.info-grid-card strong {
+  display: block;
+  color: #323130;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.info-grid-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #605e5c;
+  line-height: 1.5;
+}
+
+.info-grid-card code {
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.8em;
+  color: #d63384;
+}
+
+/* Connection flow steps */
+.info-panel-flow {
+  margin-bottom: 24px;
+}
+
+.info-flow-step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.info-flow-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: 40px;
+  bottom: -12px;
+  width: 2px;
+  background: #e8e8e8;
+}
+
+.info-flow-number {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--inner-tab-accent, #0078d4);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  z-index: 1;
+}
+
+.info-flow-content {
+  flex: 1;
+}
+
+.info-flow-content strong {
+  display: block;
+  color: #323130;
+  margin-bottom: 4px;
+}
+
+.info-flow-content p {
+  margin: 0 0 8px;
+  color: #605e5c;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.info-flow-code {
+  background: #1e1e1e;
+  color: #e6edf3;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 0;
+}
+
+/* Resources */
+.info-panel-resources {
+  margin-bottom: 24px;
+}
+
+.info-resource-category {
+  margin-bottom: 20px;
+}
+
+.info-resource-category h4 {
+  font-size: 1rem;
+  color: #323130;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.info-resource-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.info-resource-card {
+  display: block;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 14px;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.info-resource-card:hover {
+  border-color: var(--inner-tab-accent, #0078d4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.info-resource-title {
+  font-weight: 600;
+  color: var(--inner-tab-accent, #0078d4);
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.info-external-icon {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.info-resource-desc {
+  font-size: 0.8rem;
+  color: #605e5c;
+  line-height: 1.4;
+}
+
+/* File list */
+.info-file-list {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.info-file-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+}
+
+.info-file-item:last-child {
+  border-bottom: none;
+}
+
+.info-file-item code {
+  flex-shrink: 0;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #0078d4;
+  font-weight: 500;
+}
+
+.info-file-item span {
+  color: #605e5c;
+}
+
+/* =================================================================
+   VLA CHATBOT STYLES
+   Live demo UI for Voice Live API tab
+   ================================================================= */
+
+.vla-chatbot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.vla-chatbot-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.vla-chatbot-status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vla-chatbot-status-text {
+  font-size: 0.85rem;
+  color: #323130;
+  font-weight: 500;
+}
+
+.vla-chatbot-connect-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #0078d4;
+  color: white;
+  transition: all 0.2s;
+}
+
+.vla-chatbot-connect-btn:hover {
+  background: #106ebe;
+}
+
+.vla-chatbot-connect-btn.disconnect {
+  background: #d13438;
+}
+
+.vla-chatbot-connect-btn.disconnect:hover {
+  background: #a4262c;
+}
+
+.vla-chatbot-connect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vla-chatbot-error {
+  padding: 10px 16px;
+  background: #fef0f1;
+  border-bottom: 1px solid #f3d6d8;
+  color: #a4262c;
+  font-size: 0.85rem;
+}
+
+.vla-chatbot-transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vla-chatbot-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  color: #605e5c;
+  padding: 40px 20px;
+}
+
+.vla-chatbot-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.vla-chatbot-empty h4 {
+  font-size: 1.3rem;
+  color: #323130;
+  margin: 0 0 8px;
+}
+
+.vla-chatbot-empty p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+  max-width: 480px;
+}
+
+.vla-chatbot-empty-hint {
+  font-size: 0.82rem;
+  color: #8a8886;
+  font-style: italic;
+}
+
+.vla-chatbot-message {
+  display: flex;
+  gap: 10px;
+  animation: fadeInUp 0.2s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vla-chatbot-message.user {
+  flex-direction: row-reverse;
+}
+
+.vla-chatbot-message-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.vla-chatbot-message.user .vla-chatbot-message-avatar {
+  background: #e6f3ff;
+}
+
+.vla-chatbot-message.assistant .vla-chatbot-message-avatar {
+  background: #e6ffe6;
+}
+
+.vla-chatbot-message.system .vla-chatbot-message-avatar {
+  background: #fff8e6;
+}
+
+.vla-chatbot-message-content {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f0f0f0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.vla-chatbot-message.user .vla-chatbot-message-content {
+  background: #0078d4;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.vla-chatbot-message.assistant .vla-chatbot-message-content {
+  background: #f0f6ff;
+  border-bottom-left-radius: 4px;
+}
+
+.vla-chatbot-message.system .vla-chatbot-message-content {
+  background: #fff8e6;
+  font-size: 0.82rem;
+  color: #605e5c;
+  max-width: 100%;
+  text-align: center;
+}
+
+.vla-chatbot-message.interim .vla-chatbot-message-content {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+.vla-chatbot-message-time {
+  font-size: 0.7rem;
+  color: #8a8886;
+  margin-top: 4px;
+}
+
+.vla-chatbot-message.user .vla-chatbot-message-time {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.vla-chatbot-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #e8e8e8;
+  gap: 8px;
+}
+
+.vla-chatbot-mic-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 32px;
+  border: 2px solid #0078d4;
+  border-radius: 24px;
+  background: white;
+  color: #0078d4;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.vla-chatbot-mic-btn:hover:not(:disabled) {
+  background: #f0f6ff;
+}
+
+.vla-chatbot-mic-btn.listening {
+  background: #d13438;
+  border-color: #d13438;
+  color: white;
+  animation: pulse-mic 1.5s infinite;
+}
+
+@keyframes pulse-mic {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(209, 52, 56, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(209, 52, 56, 0); }
+}
+
+.vla-chatbot-mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #c8c6c4;
+  color: #c8c6c4;
+}
+
+.vla-chatbot-mic-icon {
+  font-size: 1.2rem;
+}
+
+.vla-chatbot-hint {
+  font-size: 0.78rem;
+  color: #8a8886;
+}
+

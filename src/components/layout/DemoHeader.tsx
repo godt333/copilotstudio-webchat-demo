@@ -25,6 +25,8 @@ import {
   Mic24Regular,
   Chat24Regular,
   PlugConnected24Regular,
+  WindowNew24Regular,
+  PaintBrush24Regular,
 } from '@fluentui/react-icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
@@ -108,6 +110,12 @@ interface DemoItem {
 
 const demoItems: DemoItem[] = [
   { 
+    label: 'Embedded Agent (IFrame)', 
+    path: '/embedded-agent', 
+    description: 'Simple iframe embed',
+    icon: <WindowNew24Regular />,
+  },
+  { 
     label: 'WebChat Demos', 
     path: '/webchat-demos', 
     description: 'Token Endpoint (Anonymous)',
@@ -118,6 +126,12 @@ const demoItems: DemoItem[] = [
     path: '/AgentsSDK-demos', 
     description: 'M365 Authenticated',
     icon: <PlugConnected24Regular />,
+  },
+  { 
+    label: 'Branding Demos', 
+    path: '/branding-demos', 
+    description: 'StyleOptions, StyleSet, Fluent',
+    icon: <PaintBrush24Regular />,
   },
   { 
     label: 'Voice Integration Demos', 

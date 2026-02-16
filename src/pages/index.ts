@@ -7,5 +7,7 @@ export { default as TrafficAppealsPage } from './TrafficAppealsPage';
 export { default as AgentsSDKFlexibleReactPage } from './AgentsSDKFlexibleReactPage';
 export { default as WebChatDemosPage } from './WebChatDemosPage';
 export { default as AgentsSDKDemosPage } from './AgentsSDKDemosPage';
+export { default as BrandingDemosPage } from './BrandingDemosPage';
 export { default as VoiceDemosPage } from './VoiceDemosPage';
 export { default as VoiceDemosV2Page } from './VoiceDemosV2Page';
+export { default as EmbeddedAgentPage } from './EmbeddedAgentPage';

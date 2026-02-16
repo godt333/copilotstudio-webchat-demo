@@ -33,11 +33,12 @@ import DirectLineSpeechChat from './components/DirectLineSpeechChat';
 import SpeechPonyfillChat from './components/SpeechPonyfillChat';
 import TelephonyIVR from './components/TelephonyIVR';
 import TrueDLSChat from './components/TrueDLSChat';
+import VoiceLiveAPI from './components/VoiceLiveAPI';
 
 /**
  * Voice integration mode
  */
-type VoiceMode = 'directlinespeech' | 'ponyfill' | 'truedls' | 'ivr' | 'comparison';
+type VoiceMode = 'directlinespeech' | 'ponyfill' | 'truedls' | 'voicelive' | 'ivr' | 'comparison';
 
 /**
  * Mode configuration with descriptions
@@ -58,8 +59,14 @@ const MODE_CONFIG = {
   truedls: {
     icon: '⚡',
     label: 'Direct Line Speech',
-    description: 'TRUE Direct Line Speech SDK - Single WebSocket for audio + messaging with server-side STT.',
-    badge: 'Bot Framework',
+    description: 'Direct Line Speech channel — unified WebSocket for both conversation and speech. Blocked in this tenant by Azure policy (see docs).',
+    badge: 'DLS',
+  },
+  voicelive: {
+    icon: '🎙️',
+    label: 'Voice Live API',
+    description: 'Azure Voice Live API — server-to-server WebSocket with built-in STT, TTS, and generative AI.',
+    badge: 'New',
   },
   ivr: {
     icon: '📞',
@@ -203,6 +210,8 @@ const App: React.FC = () => {
           </div>
         ) : voiceMode === 'truedls' ? (
           <TrueDLSChat key="truedls" />
+        ) : voiceMode === 'voicelive' ? (
+          <VoiceLiveAPI key="voicelive" />
         ) : voiceMode === 'directlinespeech' ? (
           <DirectLineSpeechChat key="dls" />
         ) : voiceMode === 'ponyfill' ? (

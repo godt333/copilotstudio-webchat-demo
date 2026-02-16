@@ -78,11 +78,16 @@ const TOKEN_ENDPOINT = import.meta.env.VITE_COPILOT_TOKEN_ENDPOINT || '';
 const codeExample = `import React, { useEffect, useState } from 'react';
 import ReactWebChat, { createDirectLine } from 'botframework-webchat';
 
+// Copilot Studio Token Endpoint (anonymous access)
+// Get this URL from: Copilot Studio > Channels > Web app > Connection string
+const TOKEN_ENDPOINT = 'https://YOUR_ENVIRONMENT.api.powerplatform.com/powervirtualagents/botsbyschema/YOUR_BOT_ID/directline/token?api-version=2022-03-01-preview';
+
 const ChatBot = () => {
   const [token, setToken] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/token', { method: 'POST' })
+    // Fetch Direct Line token from Copilot Studio
+    fetch(TOKEN_ENDPOINT)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched Token:", data.token);

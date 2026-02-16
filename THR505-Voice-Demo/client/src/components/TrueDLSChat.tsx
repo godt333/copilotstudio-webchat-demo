@@ -1,41 +1,27 @@
 /**
- * TrueDLSChat Component
- * =====================
- * Web Chat component using TRUE Direct Line Speech for voice integration.
- * 
- * This is the TRUE Direct Line Speech approach that provides:
- * - Single WebSocket for both audio and messaging (unified channel)
- * - Server-side speech recognition (lower latency)
- * - Native barge-in support at the channel level
- * - Direct connection to Azure Bot Service DLS channel
- * 
- * ARCHITECTURE:
- * ┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────┐
- * │   Web Client    │───▶│  Direct Line Speech │───▶│   Proxy Bot     │
- * │ (DLS SDK)       │◀───│  Channel (WebSocket)│◀───│ (Azure Bot Svc) │
- * └─────────────────┘    └─────────────────────┘    └────────┬────────┘
- *                                                            │
- *                              ┌─────────────────────────────┘
- *                              ▼
- *                        ┌─────────────────┐
- *                        │  Copilot Studio │
- *                        │     Agent       │
- *                        └─────────────────┘
- * 
- * REQUIREMENTS:
- * - Azure Bot Service with DLS channel enabled
- * - DLS proxy bot deployed (see proxy-bot folder)
- * - Speech resource with custom domain linked to DLS channel
- * 
- * This differs from Speech Ponyfill:
- * - Ponyfill: Direct Line + separate Speech SDK (client-side STT)
- * - True DLS: Single WebSocket handles both (server-side STT)
- * 
- * DEMO TIPS:
- * - Show the microphone button in the Web Chat
- * - Demonstrate barge-in by speaking while the bot is responding
- * - Point out the single connection vs separate connections
- * - Compare latency with Speech Ponyfill mode
+ * TrueDLSChat Component (Tab 3: Direct Line Speech)
+ * ===================================================
+ * Updated: Feb 11, 2026
+ *
+ * Live Web Chat component using TRUE Direct Line Speech (DLS).
+ * Single WebSocket handles BOTH audio streaming and bot messaging.
+ *
+ * Architecture: Browser → DLS WebSocket → Azure Speech Service → Bot Service → Proxy Bot → Copilot Studio
+ *
+ * Key difference from Tabs 1 & 2:
+ * - Speech is SERVER-SIDE (STT + TTS handled by Azure, not browser)
+ * - Single WebSocket for audio + messages (lower latency)
+ * - Native barge-in at the channel level
+ * - Fewer client-side voice settings (no ponyfill voice/rate/pitch controls)
+ *
+ * Settings in this component:
+ * - DLS settings (bargeIn, autoResumeListening, latencyMessage) are Copilot Studio config
+ * - No client-side speech rate/pitch/voice controls (server handles TTS)
+ *
+ * Uses useDirectLineSpeechConnectionDLS hook for connection management.
+ *
+ * @see docs/DIRECT_LINE_SPEECH_PROXY.md
+ * @see hooks/useDirectLineSpeechConnectionDLS.ts
  */
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -43,12 +29,11 @@ import ReactWebChat, { createStore } from 'botframework-webchat';
 import { useDirectLineSpeechConnectionDLS } from '../hooks/useDirectLineSpeechConnectionDLS';
 import DebugPanel from './DebugPanel';
 import KeyboardShortcuts from './KeyboardShortcuts';
-import CodePanel, { ActiveCodeSection } from './CodePanel';
 import VoiceSettingsPanel, { DirectLineSpeechSettings } from './VoiceSettingsPanel';
-import sounds, { setSoundEnabled } from '../utils/sounds';
-import { createSpeechMiddleware, BargeInController } from '../utils/textUtils';
+import sounds, { setSoundEnabled, isSoundEnabled } from '../utils/sounds';
+import DLSInfoPanels from './DLSInfoPanels';
 
-// Default Direct Line Speech settings (True DLS mode)
+// Default DLS settings (these map to Copilot Studio / channel-level configuration)
 const DEFAULT_DLS_SETTINGS: DirectLineSpeechSettings = {
   bargeInEnabled: true,
   bargeInSensitivity: 'medium',
@@ -70,30 +55,30 @@ const QUICK_REPLIES = [
 ];
 
 /**
- * Custom styles for Web Chat - True DLS branding (purple accent to differentiate)
+ * Custom styles for Web Chat — DLS purple accent
  */
 const webChatStyleOptions = {
-  // Colors - True DLS branding (purple to differentiate)
+  // Colors — DLS purple accent
   primaryFont: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
-  accent: '#6B2D5B',  // Purple accent for True DLS
-  
-  // Bubble styling - Enhanced
+  accent: '#6B2D5B',  // DLS purple
+
+  // Bubble styling
   bubbleBackground: '#f8f9fa',
   bubbleBorderRadius: 18,
-  bubbleFromUserBackground: 'linear-gradient(135deg, #6B2D5B 0%, #4A1F3D 100%)',
+  bubbleFromUserBackground: 'linear-gradient(135deg, #6B2D5B 0%, #4a1e3f 100%)',
   bubbleFromUserTextColor: '#ffffff',
   bubbleFromUserBorderRadius: 18,
   bubbleNubSize: 0,
-  
-  // Avatar - True DLS
-  botAvatarInitials: 'DLS',  // Direct Line Speech
+
+  // Avatar
+  botAvatarInitials: 'CA',
   userAvatarInitials: 'You',
   botAvatarBackgroundColor: '#6B2D5B',
-  userAvatarBackgroundColor: '#00a878',
-  
-  // Hide upload button (not needed for voice demo)
+  userAvatarBackgroundColor: '#004b88',
+
+  // Hide upload button
   hideUploadButton: true,
-  
+
   // Suggested actions
   suggestedActionsHeight: 40,
   suggestedActionsStackedHeight: 120,
@@ -101,13 +86,10 @@ const webChatStyleOptions = {
   suggestedActionBorder: '2px solid #6B2D5B',
   suggestedActionBorderRadius: 20,
   suggestedActionTextColor: '#6B2D5B',
-  
+
   // Microphone button styling
-  microphoneButtonColorOnDictate: '#00a878',  // Green accent
-  
-  // New 4.18.x features for voice
-  speechRecognitionContinuous: true,  // Keep mic open for natural conversation
-  
+  microphoneButtonColorOnDictate: '#6B2D5B',
+
   // Send box
   sendBoxBackground: '#f8f9fa',
   sendBoxBorderTop: '1px solid #e8e8e8',
@@ -115,41 +97,46 @@ const webChatStyleOptions = {
 };
 
 /**
- * TrueDLSChat Component
- * Uses the TRUE Direct Line Speech SDK for unified audio + messaging
+ * TrueDLSChat Component — Live DLS chat
  */
 export const TrueDLSChat: React.FC = () => {
-  // Enhanced state
+  // State
   const [showDebugPanel, setShowDebugPanel] = useState(false);
-  const [showCodePanel, setShowCodePanel] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [dlsSettings, setDlsSettings] = useState<DirectLineSpeechSettings>(DEFAULT_DLS_SETTINGS);
   const [soundEnabled, setSoundEnabledState] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
   const [chatKey, setChatKey] = useState(0);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const [innerTab, setInnerTab] = useState<'chat' | 'architecture' | 'connection' | 'resources'>('chat');
   const prevConnectionStatus = useRef<string>('idle');
-  const bargeInControllerRef = useRef<BargeInController | null>(null);
-  
+
   // Track speech activity from Web Chat events
   const [speechActivity, setSpeechActivity] = useState<'idle' | 'listening' | 'processing' | 'speaking'>('idle');
 
-  // Use TRUE Direct Line Speech connection hook
+  // DLS connection hook
   const {
     adapters,
     connectionStatus,
     errorMessage,
-    listeningStatus: _hookListeningStatus, // We'll use our own tracked state
+    listeningStatus: _hookListeningStatus,
     region,
     locale,
     conversationId,
     connect,
+    disconnect,
     retry,
   } = useDirectLineSpeechConnectionDLS();
 
-  // Connect on mount
+  // Store connect in ref to avoid stale closure
+  const connectRef = useRef(connect);
+  connectRef.current = connect;
+
+  // Connect on mount — only once
   useEffect(() => {
-    connect();
-  }, [connect]);
+    console.log('🔌 TrueDLSChat mounted, calling connect()...');
+    connectRef.current();
+  }, []);
 
   // Play sound effects on connection status change
   useEffect(() => {
@@ -163,76 +150,47 @@ export const TrueDLSChat: React.FC = () => {
     }
   }, [connectionStatus]);
 
-  // Memoize style options to prevent unnecessary re-renders
-  const styleOptions = useMemo(() => webChatStyleOptions, []);
-
-  // Initialize barge-in controller
-  useEffect(() => {
-    const controller = new BargeInController();
-    controller.initialize().then(() => {
-      controller.setConfig(dlsSettings.bargeInEnabled, dlsSettings.bargeInSensitivity);
-      bargeInControllerRef.current = controller;
-    });
-    
-    return () => {
-      controller.destroy();
-    };
-  }, []);
-
-  // Update barge-in controller when settings change
-  useEffect(() => {
-    if (bargeInControllerRef.current) {
-      bargeInControllerRef.current.setConfig(
-        dlsSettings.bargeInEnabled,
-        dlsSettings.bargeInSensitivity
-      );
-    }
-  }, [dlsSettings.bargeInEnabled, dlsSettings.bargeInSensitivity]);
-
-  // Function to stop speech synthesis (for barge-in)
-  const stopSpeaking = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      console.log('🛑 Speech synthesis cancelled (barge-in)');
-    }
-  }, []);
-
-  // Create Web Chat store with speech middleware and barge-in support
+  // Create Web Chat store with speech activity tracking
   // Re-create store when chatKey changes (on clear) to reset all state
   const store = useMemo(() => createStore(
     {},
-    createSpeechMiddleware({
-      onSpeechActivity: (activity) => {
-        console.log(`🎙️ [True DLS] Speech activity changed: ${activity}`);
-        setSpeechActivity(activity);
-      },
-      bargeInController: bargeInControllerRef.current ?? undefined,
-      onStopSpeaking: stopSpeaking,
-    })
-  ), [stopSpeaking, chatKey]);
-
-  // Derive active code section for CodePanel using our tracked speech activity
-  const activeCodeSection = useMemo((): ActiveCodeSection => {
-    if (connectionStatus === 'error') return 'error';
-    if (connectionStatus === 'fetching-token') return 'fetching-tokens';
-    if (connectionStatus === 'connecting') return 'connecting';
-    if (connectionStatus === 'connected') {
-      if (speechActivity === 'listening') return 'listening';
-      if (speechActivity === 'processing') return 'processing';
-      if (speechActivity === 'speaking') return 'speaking';
-      return 'connected';
+    () => (next: any) => (action: any) => {
+      // Track speech activity from Web Chat actions
+      if (action.type === 'DIRECT_LINE/INCOMING_ACTIVITY') {
+        const activity = action.payload?.activity;
+        if (activity?.type === 'message' && activity?.from?.role === 'bot') {
+          setSpeechActivity('speaking');
+          // Reset to idle after a delay (TTS is server-side, we estimate)
+          setTimeout(() => setSpeechActivity('idle'), 3000);
+        }
+      }
+      if (action.type === 'WEB_CHAT/SET_DICTATE_STATE') {
+        const state = action.payload?.dictateState;
+        if (state === 1 || state === 2) {
+          setSpeechActivity('listening');
+          setShowWelcome(false);
+        } else if (state === 3) {
+          setSpeechActivity('processing');
+        } else {
+          // Only go idle if we were listening/processing (not speaking)
+          if (speechActivity === 'listening' || speechActivity === 'processing') {
+            setSpeechActivity('idle');
+          }
+        }
+      }
+      return next(action);
     }
-    return 'idle';
-  }, [connectionStatus, speechActivity]);
+  ), [chatKey]);
 
   // Handle clear chat
   const handleClearChat = useCallback(() => {
     sounds.clear();
-    setSpeechActivity('idle'); // Reset speech activity for CodePanel
+    disconnect();
+    setSpeechActivity('idle');
     setChatKey(prev => prev + 1);
     setShowWelcome(true);
-    setTimeout(() => connect(), 100);
-  }, [connect]);
+    setTimeout(() => connectRef.current(), 100);
+  }, [disconnect]);
 
   // Handle toggle sound
   const handleToggleSound = useCallback(() => {
@@ -249,6 +207,14 @@ export const TrueDLSChat: React.FC = () => {
     setShowWelcome(false);
   }, []);
 
+  // Handle DLS settings change
+  const handleDlsSettingsChange = useCallback((newSettings: DirectLineSpeechSettings) => {
+    setDlsSettings(newSettings);
+    setShowSettingsPanel(false);
+    setSettingsMessage('⚙️ DLS settings updated (channel-level settings are configured in Copilot Studio)');
+    setTimeout(() => setSettingsMessage(null), 3000);
+  }, []);
+
   // Hide welcome when user starts talking
   useEffect(() => {
     if (speechActivity === 'listening' || speechActivity === 'processing') {
@@ -257,38 +223,27 @@ export const TrueDLSChat: React.FC = () => {
   }, [speechActivity]);
 
   /**
-   * Render status bar showing connection and voice states
+   * Render status bar
    */
   const renderStatusBar = () => {
     const getStatusText = () => {
       switch (connectionStatus) {
-        case 'idle':
-          return 'Ready to connect';
-        case 'fetching-token':
-          return 'Getting DLS credentials...';
-        case 'connecting':
-          return 'Connecting via Direct Line Speech...';
-        case 'connected':
-          return `DLS Connected (${region})`;
-        case 'error':
-          return 'DLS Connection failed';
-        case 'disconnected':
-          return 'Disconnected from DLS';
-        default:
-          return 'Unknown';
+        case 'idle': return 'Ready to connect';
+        case 'fetching-token': return 'Getting credentials...';
+        case 'connecting': return 'Connecting to DLS channel...';
+        case 'connected': return `Connected to ${region || 'DLS'}`;
+        case 'error': return 'Connection failed';
+        case 'disconnected': return 'Disconnected';
+        default: return 'Unknown';
       }
     };
 
     const getListeningText = () => {
       switch (speechActivity) {
-        case 'listening':
-          return '🎤 Listening (server-side STT)...';
-        case 'processing':
-          return '⏳ Processing...';
-        case 'speaking':
-          return '🔊 Speaking...';
-        default:
-          return 'Ready';
+        case 'listening': return '🎤 Listening...';
+        case 'processing': return '⏳ Processing...';
+        case 'speaking': return '🔊 Speaking...';
+        default: return 'Ready';
       }
     };
 
@@ -303,7 +258,7 @@ export const TrueDLSChat: React.FC = () => {
     };
 
     return (
-      <div className="status-bar dls-status-bar">
+      <div className="status-bar">
         {/* Connection Status Badge */}
         <div className={`connection-status-badge ${getStatusClass()}`}>
           <span className={`status-dot ${connectionStatus} status-pulse`} />
@@ -322,11 +277,6 @@ export const TrueDLSChat: React.FC = () => {
             )}
           </>
         )}
-
-        {/* DLS Badge */}
-        <div className="dls-badge" title="True Direct Line Speech - Single WebSocket for audio + messaging">
-          <span style={{ color: '#6B2D5B', fontWeight: 600 }}>⚡ True DLS</span>
-        </div>
 
         {/* Sound toggle */}
         <button
@@ -348,18 +298,8 @@ export const TrueDLSChat: React.FC = () => {
           🗑️ Clear
         </button>
 
-        {/* Toggle code panel button */}
-        <button 
-          className={`toggle-code-btn ${showCodePanel ? 'active' : ''}`}
-          onClick={() => setShowCodePanel(prev => !prev)}
-          title="Toggle code view (Ctrl+K)"
-        >
-          <span className="code-icon">{'</>'}</span>
-          {showCodePanel ? 'Hide Code' : 'Show Code'}
-        </button>
-
         {/* Settings button */}
-        <button 
+        <button
           className="settings-btn"
           onClick={() => setShowSettingsPanel(true)}
           title="Voice settings"
@@ -382,23 +322,20 @@ export const TrueDLSChat: React.FC = () => {
    */
   const renderWelcome = () => {
     if (!showWelcome || connectionStatus !== 'connected') return null;
-    
+
     return (
-      <div className="welcome-message dls-welcome">
-        <h4>⚡ True Direct Line Speech Mode</h4>
+      <div className="welcome-message">
+        <h4>👋 Welcome to Citizen Advice!</h4>
         <p>
-          Connected via <strong>Direct Line Speech channel</strong> - a single WebSocket 
-          handles both audio streaming and bot messaging.
+          I'm here to help you with benefits, housing, employment, and more.
+          You can type your question or click the microphone to speak.
         </p>
-        <div className="dls-features">
-          <span className="dls-feature">🔌 Single WebSocket</span>
-          <span className="dls-feature">🎤 Server-side STT</span>
-          <span className="dls-feature">⚡ Lower Latency</span>
-          <span className="dls-feature">🛑 Native Barge-in</span>
-        </div>
+        <p style={{ fontSize: '0.8rem', color: '#605e5c', marginTop: '4px' }}>
+          🎙️ Direct Line Speech — audio is processed server-side for lower latency.
+        </p>
         <div className="quick-replies">
           {QUICK_REPLIES.map((reply, idx) => (
-            <button 
+            <button
               key={idx}
               className="quick-reply-btn"
               onClick={() => handleQuickReply(reply)}
@@ -412,27 +349,27 @@ export const TrueDLSChat: React.FC = () => {
   };
 
   /**
-   * Render loading state with steps
+   * Render loading state
    */
   const renderLoading = () => {
     const steps = [
-      { id: 'token', label: 'Fetching DLS credentials', completed: connectionStatus !== 'fetching-token' },
-      { id: 'connect', label: 'Establishing Direct Line Speech WebSocket', completed: connectionStatus === 'connected' },
+      { id: 'token', label: 'Fetching Speech credentials', completed: connectionStatus !== 'fetching-token' && connectionStatus !== 'idle' },
+      { id: 'connect', label: 'Opening DLS WebSocket', completed: connectionStatus === 'connected' },
     ];
-    
+
     const activeStep = connectionStatus === 'fetching-token' ? 0 : 1;
-    
+
     return (
-      <div className="loading-container enhanced dls-loading">
+      <div className="loading-container enhanced">
         <div className="loading-spinner enhanced" />
         <p style={{ fontWeight: 600, marginTop: '16px' }}>
-          {connectionStatus === 'fetching-token' 
-            ? 'Fetching DLS credentials...'
+          {connectionStatus === 'fetching-token'
+            ? 'Fetching Speech credentials...'
             : 'Connecting to Direct Line Speech channel...'}
         </p>
         <div className="loading-steps">
           {steps.map((step, idx) => (
-            <div 
+            <div
               key={step.id}
               className={`loading-step ${step.completed ? 'completed' : idx === activeStep ? 'active' : 'pending'}`}
             >
@@ -443,29 +380,26 @@ export const TrueDLSChat: React.FC = () => {
             </div>
           ))}
         </div>
-        <p style={{ fontSize: '0.85rem', color: '#605e5c', marginTop: '12px' }}>
-          True DLS uses the <code>botframework-directlinespeech-sdk</code>
-        </p>
       </div>
     );
   };
 
   /**
-   * Render error state with suggestions
+   * Render error state
    */
   const renderError = () => (
-    <div className="error-container enhanced dls-error">
-      <h3>❌ Direct Line Speech Connection Failed</h3>
+    <div className="error-container enhanced">
+      <h3>❌ Connection Failed</h3>
       <p>{errorMessage || 'Unable to connect to Direct Line Speech channel'}</p>
       <div className="error-details">
         <code>{errorMessage}</code>
       </div>
       <ul className="error-suggestions">
-        <li>Check that the DLS proxy bot is deployed and running</li>
-        <li>Verify the Speech resource has a custom domain configured</li>
-        <li>Ensure Direct Line Speech channel is enabled on Bot Service</li>
-        <li>Check the bot's messaging endpoint is accessible</li>
-        <li>Verify Azure AD auth is working (check browser console)</li>
+        <li>Check your internet connection</li>
+        <li>Verify the backend server is running (port 3001)</li>
+        <li>Ensure the DLS channel is enabled on the Bot Service</li>
+        <li>Check that the Speech resource has local auth enabled</li>
+        <li>Check the browser console for details</li>
       </ul>
       <button onClick={retry}>🔄 Try Again</button>
     </div>
@@ -480,10 +414,10 @@ export const TrueDLSChat: React.FC = () => {
     return (
       <ReactWebChat
         key={chatKey}
-        directLine={(adapters as any).directLine}
-        webSpeechPonyfillFactory={(adapters as any).webSpeechPonyfillFactory}
+        directLine={adapters.directLine}
+        webSpeechPonyfillFactory={adapters.webSpeechPonyfillFactory}
         store={store}
-        styleOptions={styleOptions}
+        styleOptions={webChatStyleOptions}
         locale={locale || 'en-US'}
       />
     );
@@ -491,79 +425,79 @@ export const TrueDLSChat: React.FC = () => {
 
   return (
     <div className="chat-container dls-container">
-      {/* Warning Banner about current limitation */}
-      <div className="dls-warning-banner" style={{
-        background: 'linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%)',
-        border: '1px solid #ffc107',
-        borderRadius: '8px',
-        padding: '12px 16px',
-        marginBottom: '12px',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '12px',
-      }}>
-        <span style={{ fontSize: '1.5rem' }}>⚠️</span>
-        <div>
-          <strong style={{ color: '#856404' }}>Configuration Limitation</strong>
-          <p style={{ margin: '4px 0 0', fontSize: '0.875rem', color: '#856404' }}>
-            The DLS SDK connects to Speech Services, but routing to the bot requires{' '}
-            <code style={{ background: '#ffe8a1', padding: '2px 4px', borderRadius: '3px' }}>
-              isDefaultBotForCogSvcAccount: true
-            </code>{' '}
-            on the DLS channel. This setting cannot be configured via API when the Speech resource has{' '}
-            <code style={{ background: '#ffe8a1', padding: '2px 4px', borderRadius: '3px' }}>
-              disableLocalAuth: true
-            </code>{' '}
-            (enforced by enterprise policy).
-          </p>
-          <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#997404' }}>
-            👉 For Copilot Studio demos, use the <strong>Speech Ponyfill</strong> tab instead.
-            See <a href="/docs/TROUBLESHOOTING.md" style={{ color: '#0078d4' }}>TROUBLESHOOTING.md</a> for details.
-          </p>
-        </div>
-      </div>
+      {/* Inner Sub-Tab Navigation */}
+      <nav className="inner-tab-nav dls-accent">
+        {([
+          { id: 'chat', icon: '💬', label: 'ChatBot' },
+          { id: 'architecture', icon: '🏗️', label: 'Architecture' },
+          { id: 'connection', icon: '🔌', label: 'Connection Flow' },
+          { id: 'resources', icon: '📚', label: 'Resources' },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            className={`inner-tab-btn ${innerTab === tab.id ? 'active' : ''}`}
+            onClick={() => setInnerTab(tab.id)}
+          >
+            <span className="inner-tab-icon">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
+      {innerTab === 'chat' ? (
+      <>
       {/* Info Panel */}
       <div className="info-panel dls-info-panel">
-        <h3>⚡ True Direct Line Speech</h3>
+        <h3>🎙️ Direct Line Speech ({region || 'DLS'})</h3>
         <p>
-          Using the <strong>Direct Line Speech SDK</strong> for a unified audio + messaging channel.
-          Single WebSocket connection with server-side speech recognition.
+          Single WebSocket — audio + messaging combined. Speech is processed <strong>server-side</strong> for lower latency.
+          Click <strong>Settings</strong> to view DLS configuration options.
         </p>
-        <div className="dls-architecture-note">
-          <small>
-            Client → DLS WebSocket → Azure Bot Service → Proxy Bot → Copilot Studio
-          </small>
-        </div>
       </div>
 
       {/* Status Bar */}
       {renderStatusBar()}
 
+      {/* Settings change feedback */}
+      {settingsMessage && (
+        <div style={{ padding: '8px 16px', background: '#fff4ce', color: '#856404', borderRadius: 8, margin: '8px 16px 0', fontSize: '0.9rem', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+          {settingsMessage}
+        </div>
+      )}
+
       {/* Welcome Message */}
       {renderWelcome()}
 
-      {/* Main Content Area - Side by Side with Code Panel */}
-      <div className={`chat-with-code-container ${showCodePanel ? 'code-visible' : ''}`}>
-        {/* Chat Area */}
+      {/* Main Content Area */}
+      <div className="chat-with-code-container">
         <div className="chat-main-area">
-          <div className="webchat-wrapper dls-webchat">
+          <div className="webchat-wrapper">
             {connectionStatus === 'error' && renderError()}
-            {(connectionStatus === 'fetching-token' || connectionStatus === 'connecting') && renderLoading()}
-            {connectionStatus === 'connected' && renderWebChat()}
+            {(connectionStatus === 'idle' || connectionStatus === 'fetching-token') && renderLoading()}
+            {/* DLS WebSocket is LAZY — it only connects when Web Chat subscribes to activity$.
+                So we MUST mount ReactWebChat during 'connecting' state, not wait for 'connected'.
+                Show a connecting overlay on top of Web Chat while the WebSocket handshake completes. */}
+            {(connectionStatus === 'connecting' || connectionStatus === 'connected') && adapters && (
+              <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                {renderWebChat()}
+                {connectionStatus === 'connecting' && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'rgba(255,255,255,0.85)',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    zIndex: 10, borderRadius: '8px',
+                  }}>
+                    <div className="loading-spinner enhanced" />
+                    <p style={{ fontWeight: 600, marginTop: '16px', color: '#6B2D5B' }}>
+                      Opening DLS WebSocket...
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Code Panel */}
-        <CodePanel
-          mode="directlinespeech"
-          activeSection={activeCodeSection}
-          isVisible={showCodePanel}
-          onClose={() => setShowCodePanel(false)}
-          conversationId={conversationId}
-          region={region}
-          locale={locale}
-        />
       </div>
 
       {/* Debug Panel */}
@@ -577,13 +511,13 @@ export const TrueDLSChat: React.FC = () => {
         />
       )}
 
-      {/* Voice Settings Panel */}
+      {/* Voice Settings Panel — DLS mode */}
       <VoiceSettingsPanel
         mode="directlinespeech"
         isVisible={showSettingsPanel}
         onClose={() => setShowSettingsPanel(false)}
         dlsSettings={dlsSettings}
-        onDlsSettingsChange={setDlsSettings}
+        onDlsSettingsChange={handleDlsSettingsChange}
       />
 
       {/* Keyboard Shortcuts */}
@@ -592,6 +526,10 @@ export const TrueDLSChat: React.FC = () => {
         onToggleDebug={() => setShowDebugPanel(prev => !prev)}
         onToggleSound={handleToggleSound}
       />
+      </>
+      ) : (
+        <DLSInfoPanels activeTab={innerTab} />
+      )}
     </div>
   );
 };

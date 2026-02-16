@@ -1,36 +1,32 @@
-// Type declarations for web-speech-cognitive-services
+// Type declarations for packages without TypeScript definitions
+
 declare module 'web-speech-cognitive-services/lib/SpeechServices' {
-  interface SpeechServicesPonyfillOptions {
+  function createSpeechServicesPonyfill(options: {
     credentials: {
-      authorizationToken?: string;
-      subscriptionKey?: string;
+      authorizationToken: string;
       region: string;
     };
-    speechSynthesisOutputFormat?: string;
-    audioConfig?: unknown;
     speechRecognitionEndpointId?: string;
-    speechSynthesisDeploymentId?: string;
-    textNormalization?: 'display' | 'itn' | 'lexical' | 'maskeditn';
-    referenceGrammars?: string[];
-    enableTelemetry?: boolean;
-    looseEvents?: boolean;
-    language?: string;
-    speechRecognitionLanguage?: string;
-    speechSynthesisLanguage?: string;
+    textNormalization?: string;
+    speechSynthesisOutputFormat?: string;
     speechSynthesisVoiceName?: string;
-  }
-
-  interface SpeechServicesPonyfill {
-    SpeechGrammarList: typeof SpeechGrammarList;
-    SpeechRecognition: typeof SpeechRecognition;
-    speechSynthesis: SpeechSynthesis;
-    SpeechSynthesisUtterance: typeof SpeechSynthesisUtterance;
-    then?: (resolve: (ponyfill: SpeechServicesPonyfill) => void) => void;
-  }
-
-  function createSpeechServicesPonyfill(
-    options: SpeechServicesPonyfillOptions
-  ): SpeechServicesPonyfill;
-
+  }): Promise<any>;
+  
   export default createSpeechServicesPonyfill;
+  
+  export function createSpeechServicesPonyfillFactory(options: {
+    credentials: {
+      authorizationToken: string;
+      region: string;
+    };
+    speechRecognitionEndpointId?: string;
+    textNormalization?: string;
+  }): any;
+}
+
+declare module 'botframework-directlinespeech-sdk' {
+  export function createAdapters(options: any): Promise<{
+    directLine: any;
+    webSpeechPonyfillFactory: any;
+  }>;
 }

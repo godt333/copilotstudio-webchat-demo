@@ -120,9 +120,11 @@ const Header = () => {
   ];
 
   const demoItems = [
+    { label: 'Embedded Agent (IFrame)', path: '/embedded-agent', description: 'Simple iframe embed approach' },
     { label: 'WebChat Demos (Anonymous)', path: '/webchat-demos', description: 'Token Endpoint integration' },
     { label: 'Agents SDK Demos (Auth)', path: '/AgentsSDK-demos', description: 'M365 Agents SDK integration' },
     { label: 'Voice Integration Demos', path: '/voice-demos', description: 'Speech-to-text options' },
+    { label: 'Voice Demos v2', path: '/voice-demos-v2', description: 'Advanced voice integration' },
   ];
 
   return (

@@ -187,11 +187,11 @@ Client runs at `http://localhost:5173`
 📍 NO proxy bot - connects directly to Copilot Studio
 ```
 
-### Tab 2: Proxy Bot - Direct Line via Bot Middleware
+### Tab 2: Proxy Bot - Direct Line via Bot Middleware ✅ WORKING
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         PROXY BOT TAB                                        │
+│                         PROXY BOT TAB (WORKING)                              │
 │              (Direct Line via Proxy Bot + Speech SDK)                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -200,7 +200,7 @@ Client runs at `http://localhost:5173`
                       │   (web-speech-ponyfill) │
         🎤 Audio ────▶│       thr505-speech     │
         🔊 Audio ◀────│                         │
-                      │   🇺🇸 en-US             │
+                      │   🇺🇸 en-US, Jenny      │
                       └─────────────────────────┘
                                   │
                                   │ Text
@@ -209,7 +209,7 @@ Client runs at `http://localhost:5173`
 │              │      │      Direct Line        │      │                  │
 │  Web Client  │─────▶│   (Bot Framework)       │─────▶│   Proxy Bot      │──┐
 │  (Browser)   │◀─────│  thr505-dls-proxy       │◀─────│ thr505-dls-proxy │  │
-│              │      │                         │      │   (Azure Bot)    │  │
+│              │      │                         │      │ (Azure App Svc)  │  │
 │              │      │   💬 Text Messages      │      └──────────────────┘  │
 └──────────────┘      └─────────────────────────┘                            │
                                                         ┌──────────────────┐  │
@@ -220,20 +220,21 @@ Client runs at `http://localhost:5173`
 📍 Direct Line connects to: PROXY BOT (Azure Bot Service)
 📍 Proxy Bot forwards messages to: Copilot Studio Agent
 📍 Enables: Custom middleware, logging, authentication, message transformation
+📍 Status: ✅ WORKING (Fixed Feb 6, 2026 - Service Principal created)
 ```
 
-### Tab 3: True DLS (Awaiting Azure Policy Exemption)
+### Tab 3: Direct Line Speech (Bot Framework) ⛔ BLOCKED
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    TRUE DLS TAB (IDEAL - Currently Blocked)                  │
+│              DIRECT LINE SPEECH TAB (BLOCKED BY AZURE POLICY)                │
 │                  (Single WebSocket - Server-side Speech)                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────┐      ┌─────────────────────────┐      ┌──────────────────┐
 │              │      │   Direct Line Speech    │      │                  │
-│  Web Client  │═════▶│      Channel            │═════▶│   Proxy Bot      │──┐
-│  (Browser)   │◀═════│   (SINGLE WebSocket)    │◀═════│ thr505-dls-proxy │  │
+│  Web Client  │══X══▶│      Channel            │══X══▶│   Proxy Bot      │──┐
+│  (Browser)   │◀══X══│   (SINGLE WebSocket)    │◀══X══│ thr505-dls-proxy │  │
 │              │      │                         │      │                  │  │
 │              │      │   🎤 Audio (server STT) │      └──────────────────┘  │
 │              │      │   🔊 Audio (server TTS) │                            │
@@ -242,9 +243,11 @@ Client runs at `http://localhost:5173`
 └──────────────┘      └─────────────────────────┘      │      Agent       │
                                                         └──────────────────┘
 
-❌ BLOCKED: Requires isDefaultBotForCogSvcAccount = true
-            Azure Policy enforces disableLocalAuth = true on Cognitive Services
+⛔ BLOCKED: Azure Policy "MCAPSGovDeployPolicies" at Management Group level
+   enforces disableLocalAuth=true on ALL Cognitive Services resources.
+   This prevents setting isDefaultBotForCogSvcAccount=true on DLS channel.
 📍 See docs/TRUE_DLS_AZURE_POLICY_BLOCKER.md for details
+📍 Workaround: Use Tab 2 (Proxy Bot) which achieves same functionality!
 ```
 
 ### Tab 4: Telephony / IVR
@@ -277,12 +280,12 @@ Client runs at `http://localhost:5173`
 
 ### Architecture Summary Table
 
-| Tab | Locale | Voice | Direct Line To | Proxy Bot? | Speech |
-|-----|--------|-------|----------------|------------|--------|
-| **Speech Ponyfill (US)** | en-US | Jenny | Copilot Studio | ❌ No | Client-side SDK |
-| **Proxy Bot** | en-US | Jenny | **Proxy Bot** | ✅ Yes | Client-side SDK |
-| **True DLS** | - | - | DLS Channel | ✅ Yes | Server-side (blocked) |
-| **Telephony/IVR** | N/A | Phone | LiveHub | N/A | Phone audio |
+| Tab | Locale | Voice | Direct Line To | Proxy Bot? | Speech | Status |
+|-----|--------|-------|----------------|------------|--------|--------|
+| **Tab 1: Speech Ponyfill** | en-US | Jenny | Copilot Studio | ❌ No | Client-side SDK | ✅ Working |
+| **Tab 2: Proxy Bot** | en-US | Jenny | **Proxy Bot** | ✅ Yes | Client-side SDK | ✅ Working |
+| **Tab 3: Direct Line Speech** | - | - | DLS Channel | ✅ Yes | Server-side | ⛔ Blocked |
+| **Tab 4: Telephony/IVR** | N/A | Phone | LiveHub | N/A | Phone audio | ✅ Working |
 
 ## 🛠️ Troubleshooting
 
@@ -348,17 +351,105 @@ This demo is provided for educational purposes as part of TechReady THR505.
 
 ##  Working Features
 
--  **Text Chat** - Direct Line messaging with Citizen Advice agent
--  **Speech Ponyfill** - Microphone input + TTS responses (single playback)
--  **Call Modal** - QR code popup when clicking  Call button
--  **Telephony/IVR Tab** - QR code + call button for phone demo
+-  **Tab 1: Speech Ponyfill** - Microphone input + TTS responses (single playback)
+-  **Tab 2: Proxy Bot** - Direct Line via Proxy Bot → Copilot Studio (with voice!)
+-  **Tab 3: Direct Line Speech** - Info panel explaining Azure Policy blocker
+-  **Tab 4: Telephony/IVR** - QR code + call button for phone demo
 -  **LiveHub IVR** - Phone integration via +1 (786) 687-0264
+-  **Side-by-Side Mode** - Compare Proxy Bot vs Speech Ponyfill
+
+## ⚙️ Voice Settings Panel — Configuration Matrix
+
+**FROZEN: Feb 6, 2026**
+
+Both Tab 1 (Speech Ponyfill) and Tab 2 (Proxy Bot) share the same ponyfill-based
+architecture and the same settings. The Voice Settings Panel exposes all these
+settings, but not all are wirable due to API limitations.
+
+### Settings Status
+
+| Setting | Where It's Set | Service Layer | Status | Notes |
+|---------|---------------|---------------|--------|-------|
+| **Locale** | Server token endpoint → ponyfill credentials | **Azure TTS** | ✅ Working | Changing locale triggers reconnect. Server fetches region-appropriate token. |
+| **Voice** | Hook → `speechSynthesisVoiceName` | **Azure TTS** | ✅ Working | e.g. `en-US-JennyNeural`, `en-GB-SoniaNeural`. Changing triggers reconnect. |
+| **Speech Rate** | Hook → `PatchedUtterance.rate` | **Ponyfill** | ✅ Working | Wraps `SpeechSynthesisUtterance` constructor. Range: 0.1–10 (1.0 = normal). |
+| **Speech Pitch** | Hook → `PatchedUtterance.pitch` | **Ponyfill** | ✅ Working | Same wrapper. Range: 0–2 (1.0 = normal). |
+| **Continuous Recognition** | Component → `styleOptions.speechRecognitionContinuous` | **Web Chat** | ✅ Working | When true, mic stays open after each utterance (natural conversation mode). |
+| **Auto-Start Mic** | Component → `Ctrl+M` event after connect | **Client JS** | ✅ Working | Dispatches synthetic keyboard event 500ms after connection established. |
+| **Auto-Resume Listening** | Component → `Ctrl+M` after speaking→idle | **Client JS** | ✅ Working | Watches `speechActivity` state; when transitions from `speaking` to `idle`, sends `Ctrl+M` after 300ms. |
+| **Barge-In Enabled** | Component → `BargeInController.setConfig()` | **Client JS** | ⚠️ Experimental | BargeInController monitors mic volume via Web Audio API. Calls `speechSynthesis.cancel()` on ponyfill instance. |
+| **Barge-In Sensitivity** | Component → `BargeInController.setConfig()` | **Client JS** | ⚠️ Experimental | Presets: `low` (threshold 0.5, delay 500ms), `medium` (0.3, 200ms), `high` (0.15, 50ms). |
+| **Interim Results** | _Not wired_ | **Web Chat** | ❌ N/A | Controlled by Web Chat's internal `DictateComposer`. No public API to toggle. |
+| **Silence Timeout** | _Not wired_ | **Azure STT** | ❌ N/A | Controlled by Azure Speech SDK's recognizer. Would need direct SDK access (not available through ponyfill). |
+
+### Service Layer Legend
+
+| Layer | What It Is | Where Settings Are Applied |
+|-------|-----------|---------------------------|
+| **Azure TTS** | Azure Speech Services Text-to-Speech | Token fetched server-side; audio rendered client-side by ponyfill |
+| **Azure STT** | Azure Speech Services Speech-to-Text | Recognizer created internally by ponyfill; config not exposed |
+| **Ponyfill** | `web-speech-cognitive-services` v7.1.3 | Wraps Azure SDK as a Web Speech API ponyfill for Web Chat |
+| **Web Chat** | `botframework-webchat` v4.18.0 | React component with `styleOptions` and Redux store |
+| **Client JS** | Custom React code in components/hooks | `useEffect` hooks, keyboard events, `BargeInController` class |
+| **Copilot Studio** | The Copilot Studio agent (cloud) | Handles conversation logic; voice settings under Settings → Voice |
+| **Copilot Agent** | Same as Copilot Studio agent | Agent-level settings: barge-in, auto-resume, latency messages, SSML |
+
+### Where Would Each Setting Be Configured in a Production System?
+
+| Setting | Client-Side | Azure Speech Services | Copilot Studio Agent | Bot Framework |
+|---------|------------|----------------------|---------------------|--------------|
+| Locale | ✅ Token request | ✅ Resource region | ✅ Agent language | - |
+| Voice name | ✅ Ponyfill config | ✅ Voice gallery | ✅ Settings → Voice | - |
+| Speech rate | ✅ Utterance.rate | ✅ SSML `<prosody>` | ✅ SSML in agent | - |
+| Speech pitch | ✅ Utterance.pitch | ✅ SSML `<prosody>` | ✅ SSML in agent | - |
+| Barge-in | ✅ Custom controller | - | ✅ Settings → Voice | ✅ DLS channel |
+| Continuous mic | ✅ styleOptions | - | - | ✅ inputHint |
+| Silence timeout | - | ✅ Recognizer config | ✅ Settings → Voice | ✅ DLS channel |
+| Interim results | - | ✅ Recognizer config | - | - |
+| Auto-resume | ✅ Custom JS | - | ✅ Settings → Voice | ✅ inputHint |
+| SSML output | - | ✅ SSML format | ✅ Agent responses | ✅ speak property |
+
+### Barge-In: Architecture Notes
+
+The barge-in implementation is **experimental** due to architectural constraints:
+
+1. **Detection** works via `BargeInController` — monitors mic volume with Web Audio API
+2. **TTS cancellation** calls `speechSynthesis.cancel()` on the **ponyfill's own instance**
+   (exposed via `speechSynthesisRef` from both hooks)
+3. **Limitation**: The middleware cannot call `dispatch()` into Web Chat's Redux store
+   (causes re-entrant "Render error" crash), so Web Chat's internal speaking state
+   may not update immediately after cancel
+4. **Browser restriction**: `AudioContext` may start suspended; the controller has a
+   late-initialization fallback but it's not guaranteed to work in all browsers
+
+For production barge-in, consider:
+- **True Direct Line Speech** (handles barge-in server-side, blocked by Azure Policy here)
+- **Copilot Studio native voice** (Settings → Voice → Enable barge-in)
+- **Custom Speech SDK recognizer** with direct access to start/stop controls
 
 ##  Resolved Issues
 
-| Issue | Root Cause | Solution |
-|-------|------------|----------|
-| Speech recognition not working | Custom subdomain + disableLocalAuth incompatible with ponyfill | Reverted to simple `authorizationToken` + `region` approach |
-| Duplicate TTS audio | React StrictMode double-mounting | Removed `<React.StrictMode>` from main.tsx |
-| Desktop tel: link opens app selector | Browser default behavior | Changed to button with modal showing QR code |
+| Issue | Root Cause | Solution | Date |
+|-------|------------|----------|------|
+| Speech recognition not working | Custom subdomain + disableLocalAuth incompatible with ponyfill | Reverted to simple `authorizationToken` + `region` approach | Feb 4, 2026 |
+| Duplicate TTS audio | React StrictMode double-mounting | Removed `<React.StrictMode>` from main.tsx | Feb 4, 2026 |
+| Desktop tel: link opens app selector | Browser default behavior | Changed to button with modal showing QR code | Feb 4, 2026 |
+| True DLS blocked by Azure Policy | MCAPSGovDeployPolicies enforces `disableLocalAuth=true` | Pivoted Tab 2 to use Proxy Bot with client-side speech | Feb 6, 2026 |
+| Proxy Bot deployment failing | Missing node_modules on Azure | Used `quick-deploy.zip` with `SCM_DO_BUILD_DURING_DEPLOYMENT=true` | Feb 6, 2026 |
+| Proxy Bot AADSTS7000229 error | App Registration missing Service Principal | Created SP via `az ad sp create --id 632aab43-...` | Feb 6, 2026 |
+| speechRate / speechPitch not applied | Values logged but never set on utterance | Created `PatchedUtterance` wrapper that sets `.rate` and `.pitch` | Feb 6, 2026 |
+| continuousRecognition not applied (Tab 2) | `styleOptions` was hardcoded, not reading settings | Made `styleOptions` dynamic via `useMemo` from `ponyfillSettings` | Feb 6, 2026 |
+| autoResumeListening not applied | Setting defined but never used in any effect | Added `useEffect` watching `speechActivity` transition speaking→idle | Feb 6, 2026 |
+| BargeInController null at store creation | Created async inside `.then()` callback | Changed to synchronous `useRef(new BargeInController())` | Feb 6, 2026 |
+| Barge-in calling wrong speechSynthesis | Called `window.speechSynthesis.cancel()` (browser native) | Exposed ponyfill's `speechSynthesis` via `speechSynthesisRef` from hooks | Feb 6, 2026 |
+| Middleware dispatch caused Render error | `dispatch()` inside middleware re-enters Web Chat store | Removed all `dispatch()` calls; use `onStopSpeaking` callback only | Feb 6, 2026 |
+
+## ⚠️ Known Limitations (Frozen Feb 6, 2026)
+
+| Feature | Issue | Why |
+|---------|-------|-----|
+| Barge-in | Experimental — may not trigger consistently | AudioContext browser restrictions; volume threshold tuning needed |
+| Interim Results | Setting displayed but non-functional | Web Chat's DictateComposer controls this internally; no public API |
+| Silence Timeout | Setting displayed but non-functional | Azure Speech SDK recognizer controls this; not exposed through ponyfill |
+| Barge-in UI state | "Speaking" indicator may persist after cancel | Cannot dispatch into Web Chat store from middleware without crash |
 

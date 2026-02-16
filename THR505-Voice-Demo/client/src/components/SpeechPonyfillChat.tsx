@@ -1,28 +1,35 @@
 /**
- * SpeechPonyfillChat Component
- * ============================
+ * SpeechPonyfillChat Component (Tab 1: Speech Ponyfill)
+ * =====================================================
+ * FROZEN: Feb 6, 2026
+ *
  * Web Chat component using Direct Line + Speech Ponyfill for voice integration.
- * 
- * This is the ALTERNATIVE voice integration approach that:
- * - Uses standard Direct Line for all messaging
- * - Adds speech capabilities via a Web Speech API ponyfill
- * - Keeps messaging and speech as separate layers
- * 
- * When to use this approach:
- * - You have an existing Direct Line bot and want to add voice
- * - You need full conversation history available in Direct Line
- * - Voice is optional or an add-on feature
- * - You need custom speech configuration
- * 
- * The component connects to the same Copilot Studio agent as the text demo,
- * demonstrating that the same agent can be accessed via different channels.
- * 
- * DEMO TIPS:
- * - Compare the network traffic with Direct Line Speech mode
- * - Show that messages go through standard Direct Line endpoints
- * - Explain the trade-offs between the two approaches
- * 
+ * Connects DIRECTLY to Copilot Studio (no proxy bot).
+ *
+ * Architecture: Browser → Direct Line → Copilot Studio
+ *              Browser → Azure Speech SDK ponyfill → speakers/microphone
+ *
+ * Settings wired in this component:
+ * - continuousRecognition → styleOptions.speechRecognitionContinuous (useMemo)
+ * - autoStartMic → Ctrl+M keyboard event 500ms after 'connected' (useEffect)
+ * - autoResumeListening → Ctrl+M 300ms after speechActivity 'speaking'→'idle' (useEffect)
+ * - bargeInEnabled/Sensitivity → BargeInController.setConfig() (useEffect)
+ * - onStopSpeaking → speechSynthesisRef.current.cancel() (passed to middleware)
+ *
+ * Settings wired in the hook (useDirectLinePonyfillConnection):
+ * - locale, voice, speechRate, speechPitch (see hook docs)
+ *
+ * Settings NOT wired (displayed in panel but non-functional):
+ * - interimResults — Web Chat DictateComposer internal
+ * - silenceTimeoutMs — Azure Speech SDK recognizer internal
+ *
+ * Barge-in status: ⚠️ EXPERIMENTAL
+ * The BargeInController monitors mic volume and calls speechSynthesis.cancel()
+ * on the ponyfill's instance. This stops audio but Web Chat's internal state
+ * may not fully update.
+ *
  * @see docs/SPEECH_PONYFILL.md for detailed explanation
+ * @see utils/textUtils.ts for middleware and BargeInController docs
  */
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
@@ -30,10 +37,10 @@ import ReactWebChat, { createStore } from 'botframework-webchat';
 import { useDirectLinePonyfillConnection } from '../hooks/useDirectLinePonyfillConnection';
 import DebugPanel from './DebugPanel';
 import KeyboardShortcuts from './KeyboardShortcuts';
-import CodePanel, { ActiveCodeSection } from './CodePanel';
 import VoiceSettingsPanel, { PonyfillSettings, VOICE_OPTIONS, LOCALE_OPTIONS } from './VoiceSettingsPanel';
 import sounds, { setSoundEnabled, isSoundEnabled } from '../utils/sounds';
 import { createSpeechMiddleware, BargeInController } from '../utils/textUtils';
+import PonyfillInfoPanels from './PonyfillInfoPanels';
 
 // Default Ponyfill settings
 const DEFAULT_PONYFILL_SETTINGS: PonyfillSettings = {
@@ -59,10 +66,11 @@ const QUICK_REPLIES = [
 ];
 
 /**
- * Custom styles for Web Chat - Citizen Advice branding (Ponyfill mode)
- * Different accent color to distinguish from Direct Line Speech mode
+ * Base styles for Web Chat - Citizen Advice branding (Ponyfill mode)
+ * Note: speechRecognitionContinuous and other dynamic settings are applied
+ * in the component via useMemo based on ponyfillSettings
  */
-const webChatStyleOptions = {
+const baseWebChatStyleOptions = {
   // Colors - Citizen Advice green accent for ponyfill mode
   primaryFont: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
   accent: '#00a878',  // Citizen Advice green (alternative mode)
@@ -118,7 +126,6 @@ export const SpeechPonyfillChat: React.FC = () => {
   const [selectedLocale, setSelectedLocale] = useState('en-US');
   const [selectedVoice, setSelectedVoice] = useState('en-US-JennyNeural');
   const [showDebugPanel, setShowDebugPanel] = useState(false);
-  const [showCodePanel, setShowCodePanel] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [ponyfillSettings, setPonyfillSettings] = useState<PonyfillSettings>(DEFAULT_PONYFILL_SETTINGS);
   const [soundEnabled, setSoundEnabledState] = useState(true);
@@ -127,9 +134,13 @@ export const SpeechPonyfillChat: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [chatKey, setChatKey] = useState(0); // For clearing chat
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const [innerTab, setInnerTab] = useState<'chat' | 'architecture' | 'connection' | 'resources'>('chat');
   const webChatRef = useRef<HTMLDivElement>(null);
-  const bargeInControllerRef = useRef<BargeInController | null>(null);
+  // Create barge-in controller immediately (synchronously) so it's available for store creation
+  const bargeInControllerRef = useRef<BargeInController>(new BargeInController());
   const prevConnectionStatus = useRef<string>('idle');
+  const prevSpeechActivity = useRef<string>('idle'); // Track previous speech activity for autoResumeListening
 
   // Track speech activity from Web Chat events
   const [speechActivity, setSpeechActivity] = useState<'idle' | 'listening' | 'processing' | 'speaking'>('idle');
@@ -142,6 +153,7 @@ export const SpeechPonyfillChat: React.FC = () => {
     listeningStatus: _hookListeningStatus, // We'll use our own tracked state
     conversationId,
     locale,
+    speechSynthesisRef,
     connect,
     retry,
     disconnect,
@@ -150,40 +162,101 @@ export const SpeechPonyfillChat: React.FC = () => {
     userName: 'Demo User',
     locale: selectedLocale,
     voice: selectedVoice,
+    // Pass all speech settings from ponyfillSettings
+    speechRate: ponyfillSettings.speechRate,
+    speechPitch: ponyfillSettings.speechPitch,
+    interimResults: ponyfillSettings.interimResults,
+    continuousRecognition: ponyfillSettings.continuousRecognition,
+    silenceTimeoutMs: ponyfillSettings.silenceTimeoutMs,
   });
 
-  // Connect on mount
+  // Store connect in ref to avoid stale closure
+  const connectRef = useRef(connect);
+  connectRef.current = connect;
+
+  // Connect on mount - only once
   useEffect(() => {
     console.log('🔌 SpeechPonyfillChat mounted, calling connect()...');
-    connect();
-  }, [connect]);
+    connectRef.current();
+  }, []);
 
   // Play sound effects on connection status change
   useEffect(() => {
     if (prevConnectionStatus.current !== connectionStatus) {
       if (connectionStatus === 'connected' && prevConnectionStatus.current !== 'connected') {
         sounds.connected();
+        
+        // Auto-start mic if enabled in settings
+        if (ponyfillSettings.autoStartMic) {
+          console.log('🎤 Auto-starting microphone...');
+          // Use a small delay to ensure Web Chat is fully rendered
+          setTimeout(() => {
+            // Programmatically click the mic button in Web Chat
+            const micBtn = webChatRef.current?.querySelector('button[aria-label*="Microphone"]') as HTMLButtonElement
+              || webChatRef.current?.querySelector('button[title*="Microphone"]') as HTMLButtonElement
+              || webChatRef.current?.querySelector('.webchat__microphone-button button') as HTMLButtonElement
+              || webChatRef.current?.querySelector('[class*="microphone"] button') as HTMLButtonElement;
+            if (micBtn) {
+              console.log('🎤 Found mic button, clicking...');
+              micBtn.click();
+            } else {
+              console.warn('🎤 Mic button not found in Web Chat DOM');
+            }
+          }, 800);
+        }
       } else if (connectionStatus === 'error') {
         sounds.error();
       }
       prevConnectionStatus.current = connectionStatus;
     }
-  }, [connectionStatus]);
+  }, [connectionStatus, ponyfillSettings.autoStartMic]);
+
+  // Auto-resume listening when bot finishes speaking (if enabled)
+  useEffect(() => {
+    // Only resume if:
+    // 1. autoResumeListening is enabled
+    // 2. We just finished speaking (was 'speaking', now 'idle')
+    // 3. We're connected
+    if (
+      ponyfillSettings.autoResumeListening &&
+      prevSpeechActivity.current === 'speaking' &&
+      speechActivity === 'idle' &&
+      connectionStatus === 'connected'
+    ) {
+      console.log('🎤 Auto-resuming listening after bot finished speaking...');
+      setTimeout(() => {
+        const micBtn = webChatRef.current?.querySelector('button[aria-label*="Microphone"]') as HTMLButtonElement
+          || webChatRef.current?.querySelector('button[title*="Microphone"]') as HTMLButtonElement
+          || webChatRef.current?.querySelector('.webchat__microphone-button button') as HTMLButtonElement
+          || webChatRef.current?.querySelector('[class*="microphone"] button') as HTMLButtonElement;
+        if (micBtn) {
+          micBtn.click();
+        }
+      }, 300);
+    }
+    prevSpeechActivity.current = speechActivity;
+  }, [speechActivity, ponyfillSettings.autoResumeListening, connectionStatus]);
 
   // Debug: log connection status changes
   useEffect(() => {
     console.log(`📊 Connection status: ${connectionStatus}, directLine: ${!!directLine}, ponyfill: ${!!webSpeechPonyfillFactory}`);
   }, [connectionStatus, directLine, webSpeechPonyfillFactory]);
 
-  // Memoize style options
-  const styleOptions = useMemo(() => webChatStyleOptions, []);
+  // Memoize style options - now dynamic based on ponyfillSettings
+  const styleOptions = useMemo(() => ({
+    ...baseWebChatStyleOptions,
+    // Apply dynamic settings from ponyfillSettings
+    speechRecognitionContinuous: ponyfillSettings.continuousRecognition,
+  }), [ponyfillSettings.continuousRecognition]);
 
-  // Initialize barge-in controller
+  // Initialize barge-in controller audio (controller already created in ref)
   useEffect(() => {
-    const controller = new BargeInController();
+    const controller = bargeInControllerRef.current;
+    controller.setConfig(ponyfillSettings.bargeInEnabled, ponyfillSettings.bargeInSensitivity);
+    
+    // Initialize audio asynchronously
     controller.initialize().then(() => {
-      controller.setConfig(ponyfillSettings.bargeInEnabled, ponyfillSettings.bargeInSensitivity);
-      bargeInControllerRef.current = controller;
+      console.log('🎤 Barge-in controller audio initialized');
     });
     
     return () => {
@@ -193,24 +266,15 @@ export const SpeechPonyfillChat: React.FC = () => {
 
   // Update barge-in controller when settings change
   useEffect(() => {
-    if (bargeInControllerRef.current) {
-      bargeInControllerRef.current.setConfig(
-        ponyfillSettings.bargeInEnabled,
-        ponyfillSettings.bargeInSensitivity
-      );
-    }
+    bargeInControllerRef.current.setConfig(
+      ponyfillSettings.bargeInEnabled,
+      ponyfillSettings.bargeInSensitivity
+    );
   }, [ponyfillSettings.bargeInEnabled, ponyfillSettings.bargeInSensitivity]);
-
-  // Function to stop speech synthesis (for barge-in)
-  const stopSpeaking = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      console.log('🛑 Speech synthesis cancelled (barge-in)');
-    }
-  }, []);
 
   // Create Web Chat store with speech middleware and barge-in support
   // Re-create store when chatKey changes (on clear) to reset all state
+  // Barge-in now dispatches WEB_CHAT/STOP_SPEAKING_ACTIVITY through the store directly
   const store = useMemo(() => createStore(
     {},
     createSpeechMiddleware({
@@ -218,24 +282,13 @@ export const SpeechPonyfillChat: React.FC = () => {
         console.log(`🎙️ Speech activity changed: ${activity}`);
         setSpeechActivity(activity);
       },
-      bargeInController: bargeInControllerRef.current ?? undefined,
-      onStopSpeaking: stopSpeaking,
+      bargeInController: bargeInControllerRef.current,
+      onStopSpeaking: () => {
+        console.log('🛑 Cancelling ponyfill speechSynthesis directly');
+        speechSynthesisRef.current?.cancel();
+      },
     })
-  ), [stopSpeaking, chatKey]);
-
-  // Derive active code section for CodePanel using our tracked speech activity
-  const activeCodeSection = useMemo((): ActiveCodeSection => {
-    if (connectionStatus === 'error') return 'error';
-    if (connectionStatus === 'fetching-tokens') return 'fetching-tokens';
-    if (connectionStatus === 'connecting') return 'connecting';
-    if (connectionStatus === 'connected') {
-      if (speechActivity === 'listening') return 'listening';
-      if (speechActivity === 'processing') return 'processing';
-      if (speechActivity === 'speaking') return 'speaking';
-      return 'connected';
-    }
-    return 'idle';
-  }, [connectionStatus, speechActivity]);
+  ), [chatKey, speechSynthesisRef]);
 
   // Handle clear chat
   const handleClearChat = useCallback(() => {
@@ -278,17 +331,42 @@ export const SpeechPonyfillChat: React.FC = () => {
 
   // Handle settings change from the settings panel
   const handlePonyfillSettingsChange = useCallback((newSettings: PonyfillSettings) => {
+    // Check if any settings that require reconnection changed
+    const localeChanged = newSettings.locale !== selectedLocale;
+    const voiceChanged = newSettings.voice !== selectedVoice;
+    const speechRateChanged = newSettings.speechRate !== ponyfillSettings.speechRate;
+    const speechPitchChanged = newSettings.speechPitch !== ponyfillSettings.speechPitch;
+    const silenceTimeoutChanged = newSettings.silenceTimeoutMs !== ponyfillSettings.silenceTimeoutMs;
+    const continuousChanged = newSettings.continuousRecognition !== ponyfillSettings.continuousRecognition;
+    const interimChanged = newSettings.interimResults !== ponyfillSettings.interimResults;
+    
+    const needsReconnect = localeChanged || voiceChanged || speechRateChanged || 
+                           speechPitchChanged || silenceTimeoutChanged || 
+                           continuousChanged || interimChanged;
+    
+    // Update state first
     setPonyfillSettings(newSettings);
-    // Sync locale and voice with component state
-    if (newSettings.locale !== selectedLocale) {
+    
+    if (localeChanged) {
       setSelectedLocale(newSettings.locale);
-      disconnect();
-      setTimeout(() => connect(), 100);
     }
-    if (newSettings.voice !== selectedVoice) {
+    if (voiceChanged) {
       setSelectedVoice(newSettings.voice);
     }
-  }, [selectedLocale, selectedVoice, disconnect, connect]);
+    
+    if (needsReconnect) {
+      console.log(`🔄 Settings changed - reconnecting with new settings...`);
+      console.log(`   Locale: ${newSettings.locale}, Voice: ${newSettings.voice}`);
+      console.log(`   Rate: ${newSettings.speechRate}, Pitch: ${newSettings.speechPitch}`);
+      // Show feedback and close settings panel
+      setShowSettingsPanel(false);
+      setSettingsMessage(`🔄 Applying new settings (voice: ${newSettings.voice.split('-').slice(2).join(' ')})...`);
+      setTimeout(() => setSettingsMessage(null), 3000);
+      // Reconnect with new settings - use ref to get latest connect function
+      disconnect();
+      setTimeout(() => connectRef.current(), 500);
+    }
+  }, [selectedLocale, selectedVoice, ponyfillSettings, disconnect]);
 
   // Hide welcome when user starts typing
   useEffect(() => {
@@ -382,16 +460,6 @@ export const SpeechPonyfillChat: React.FC = () => {
         {/* Clear chat button */}
         <button className="clear-chat-btn" onClick={handleClearChat} title="Clear chat (Ctrl+L)">
           🗑️ Clear
-        </button>
-
-        {/* Toggle code panel button */}
-        <button 
-          className={`toggle-code-btn ${showCodePanel ? 'active' : ''}`}
-          onClick={() => setShowCodePanel(prev => !prev)}
-          title="Toggle code view (Ctrl+K)"
-        >
-          <span className="code-icon">{'</>'}</span>
-          {showCodePanel ? 'Hide Code' : 'Show Code'}
         </button>
 
         <button 
@@ -546,6 +614,27 @@ export const SpeechPonyfillChat: React.FC = () => {
 
   return (
     <div className="chat-container">
+      {/* Inner Sub-Tab Navigation */}
+      <nav className="inner-tab-nav ponyfill-accent">
+        {([
+          { id: 'chat', icon: '💬', label: 'ChatBot' },
+          { id: 'architecture', icon: '🏗️', label: 'Architecture' },
+          { id: 'connection', icon: '🔌', label: 'Connection Flow' },
+          { id: 'resources', icon: '📚', label: 'Resources' },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            className={`inner-tab-btn ${innerTab === tab.id ? 'active' : ''}`}
+            onClick={() => setInnerTab(tab.id)}
+          >
+            <span className="inner-tab-icon">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {innerTab === 'chat' ? (
+      <>
       {/* Info Panel */}
       <div className="info-panel">
         <h3>🔊 Speech Ponyfill ({selectedLocale === 'en-US' ? 'US' : selectedLocale === 'en-GB' ? 'UK' : selectedLocale})</h3>
@@ -561,12 +650,18 @@ export const SpeechPonyfillChat: React.FC = () => {
       {/* Status Bar */}
       {renderStatusBar()}
 
+      {/* Settings change feedback */}
+      {settingsMessage && (
+        <div style={{ padding: '8px 16px', background: '#fff4ce', color: '#856404', borderRadius: 8, margin: '8px 16px 0', fontSize: '0.9rem', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+          {settingsMessage}
+        </div>
+      )}
+
       {/* Welcome Message */}
       {renderWelcome()}
 
-      {/* Main Content Area - Side by Side with Code Panel */}
-      <div className={`chat-with-code-container ${showCodePanel ? 'code-visible' : ''}`}>
-        {/* Chat Area */}
+      {/* Main Content Area */}
+      <div className="chat-with-code-container">
         <div className="chat-main-area">
           <div className="webchat-wrapper">
             {connectionStatus === 'error' && renderError()}
@@ -574,17 +669,6 @@ export const SpeechPonyfillChat: React.FC = () => {
             {connectionStatus === 'connected' && renderWebChat()}
           </div>
         </div>
-
-        {/* Code Panel */}
-        <CodePanel
-          mode="ponyfill"
-          activeSection={activeCodeSection}
-          isVisible={showCodePanel}
-          onClose={() => setShowCodePanel(false)}
-          conversationId={conversationId}
-          region="eastus"
-          locale={selectedLocale}
-        />
       </div>
 
       {/* Debug Panel */}
@@ -634,6 +718,10 @@ export const SpeechPonyfillChat: React.FC = () => {
             <a href="tel:+17866870264" className="call-modal-btn">📱 Open Phone App</a>
           </div>
         </div>
+      )}
+      </>
+      ) : (
+        <PonyfillInfoPanels activeTab={innerTab} />
       )}
     </div>
   );

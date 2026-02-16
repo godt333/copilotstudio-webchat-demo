@@ -12,7 +12,6 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import ReactWebChat, { createDirectLine } from 'botframework-webchat';
-import { adaptiveCardsHostConfig } from '../../config/adaptiveCardsConfig';
 import {
   makeStyles,
   tokens,
@@ -102,6 +101,10 @@ const TOKEN_ENDPOINT = import.meta.env.VITE_COPILOT_TOKEN_ENDPOINT || '';
 
 const codeExample = `import { createDirectLine, renderWebChat } from 'botframework-webchat';
 
+// Copilot Studio Token Endpoint (anonymous access)
+// Get this URL from: Copilot Studio > Channels > Web app > Connection string
+const TOKEN_ENDPOINT = 'https://YOUR_ENVIRONMENT.api.powerplatform.com/powervirtualagents/botsbyschema/YOUR_BOT_ID/directline/token?api-version=2022-03-01-preview';
+
 const WebChatComponent = () => {
   const [token, setToken] = useState('');
   const webchatRef = useRef(null);
@@ -109,7 +112,8 @@ const WebChatComponent = () => {
   useEffect(() => {
     const fetchToken = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/token', { method: 'POST' });
+        // Fetch Direct Line token from Copilot Studio
+        const res = await fetch(TOKEN_ENDPOINT);
         const { token } = await res.json();
         setToken(token);
       } catch (error) {
@@ -117,7 +121,7 @@ const WebChatComponent = () => {
       }
     };
     fetchToken();
-  }, []);
+  }, [];
 
   useEffect(() => {
     if (token && webchatRef.current) {

@@ -1,0 +1,22 @@
+{
+  "name": "dls-proxy-bot",
+  "version": "1.0.0",
+  "description": "Direct Line Speech proxy bot for Copilot Studio integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "botbuilder": "^4.22.0",
+    "botframework-connector": "^4.22.0",
+    "restify": "^11.1.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
+

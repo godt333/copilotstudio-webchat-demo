@@ -7,7 +7,12 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       'botframework-webchat',
+      'botframework-directlinespeech-sdk',
+      'web-speech-cognitive-services',
       'microsoft-cognitiveservices-speech-sdk',
+      'p-defer-es5',
+      'markdown-it-attrs-es5',
+      'abort-controller-es5',
     ],
   },
   server: {

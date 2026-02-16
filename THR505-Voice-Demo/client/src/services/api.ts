@@ -17,6 +17,8 @@ export interface SpeechTokenResponse {
   expiresIn: number;
   locale: string;
   voice: string;
+  speechKey?: string;
+  customDomainHost?: string;
 }
 
 /**

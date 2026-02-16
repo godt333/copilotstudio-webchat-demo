@@ -30,6 +30,7 @@ import SimpleReactWebChatDemo from '../demos/simple-react/SimpleReactWebChatDemo
 import MiddlewareCustomUIDemo from '../demos/middleware-custom-ui/MiddlewareCustomUIDemo';
 import RenderWebChatDemo from '../demos/render-function/RenderWebChatDemo';
 import DemoHeader from '../components/layout/DemoHeader';
+import IntegrationComparisonTable from '../components/common/IntegrationComparisonTable';
 
 const useStyles = makeStyles({
   page: {
@@ -363,7 +364,7 @@ const useStyles = makeStyles({
   },
 });
 
-type TabValue = 'overview' | 'cdn' | 'simple' | 'middleware' | 'render';
+type TabValue = 'overview' | 'comparison' | 'cdn' | 'simple' | 'middleware' | 'render';
 
 interface DemoOption {
   id: TabValue;
@@ -644,6 +645,8 @@ export default function WebChatDemosPage() {
         return <MiddlewareCustomUIDemo />;
       case 'render':
         return <RenderWebChatDemo />;
+      case 'comparison':
+        return <IntegrationComparisonTable />;
       default:
         return null;
     }
@@ -684,6 +687,7 @@ export default function WebChatDemosPage() {
             <Tab value="simple">Simple ReactWebChat</Tab>
             <Tab value="middleware">Middleware + Custom UI</Tab>
             <Tab value="render">renderWebChat</Tab>
+            <Tab value="comparison">Integration Comparison</Tab>
           </TabList>
 
           {/* Tab Content */}

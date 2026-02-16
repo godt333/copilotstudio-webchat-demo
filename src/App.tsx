@@ -13,8 +13,10 @@ import {
   AgentsSDKFlexibleReactPage,
   WebChatDemosPage,
   AgentsSDKDemosPage,
+  BrandingDemosPage,
   VoiceDemosPage,
   VoiceDemosV2Page,
+  EmbeddedAgentPage,
 } from './pages';
 import './App.css';
 
@@ -78,8 +80,10 @@ function App() {
           <Route path="AgentsSDK-FlexibleReact" element={<AgentsSDKFlexibleReactPage />} />
           <Route path="webchat-demos" element={<WebChatDemosPage />} />
           <Route path="AgentsSDK-demos" element={<AgentsSDKDemosPage />} />
+          <Route path="branding-demos" element={<BrandingDemosPage />} />
           <Route path="voice-demos" element={<VoiceDemosPage />} />
           <Route path="voice-demos-v2" element={<VoiceDemosV2Page />} />
+          <Route path="embedded-agent" element={<EmbeddedAgentPage />} />
         </Routes>
       </BrowserRouter>
     </FluentProvider>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DLS Minimal Test</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: #f5f5f5; }
+    #webchat { height: 500px; width: 100%; max-width: 600px; border: 2px solid #6B2D5B; border-radius: 8px; overflow: hidden; }
+    #log { background: #1e1e1e; color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; margin-top: 10px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; border-radius: 8px; }
+    .status { padding: 8px 16px; border-radius: 4px; display: inline-block; margin: 8px 0; font-weight: bold; }
+    .connecting { background: #fff3cd; color: #856404; }
+    .connected { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    h1 { color: #6B2D5B; }
+  </style>
+</head>
+<body>
+  <h1>⚡ DLS Minimal Test (Zero React, Zero Middleware)</h1>
+  <p>This page uses the CDN version of Web Chat with the exact official Microsoft DLS pattern.</p>
+  <div id="statusDiv" class="status connecting">⏳ Loading...</div>
+  <div id="webchat"></div>
+  <div id="log"></div>
+
+  <!-- Official CDN bundle — this is the EXACT version Microsoft tests with -->
+  <script crossorigin="anonymous" src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('statusDiv');
+
+    function log(msg) {
+      const ts = new Date().toISOString().substring(11, 23);
+      const line = `[${ts}] ${msg}`;
+      console.log(line);
+      logEl.textContent += line + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = 'status ' + cls;
+    }
+
+    (async function () {
+      try {
+        log('Step 1: Fetching speech credentials from server...');
+        const res = await fetch('/api/speechservices/token');
+        if (!res.ok) throw new Error('Token fetch failed: ' + res.status);
+        const data = await res.json();
+        log('Step 1 ✅ Got credentials - region=' + data.region + ' speechKey_len=' + (data.speechKey||'').length + ' token_len=' + (data.token||'').length);
+
+        // === APPROACH A: subscriptionKey + region (what we've been using) ===
+        log('Step 2: Creating DLS adapters with subscriptionKey + region...');
+        setStatus('⏳ Creating DLS adapters...', 'connecting');
+
+        const adapters = await window.WebChat.createDirectLineSpeechAdapters({
+          fetchCredentials: function () {
+            log('  fetchCredentials called by SDK → returning subscriptionKey + region');
+            return {
+              subscriptionKey: data.speechKey,
+              region: data.region
+            };
+          }
+        });
+
+        log('Step 2 ✅ Adapters created: ' + Object.keys(adapters).join(', '));
+
+        // Monitor connectionStatus$ (diagnostic only)
+        var statusNames = { 0: 'Uninitialized', 1: 'Connecting', 2: 'Online', 4: 'Error' };
+        adapters.directLine.connectionStatus$.subscribe(function (status) {
+          log('📡 connectionStatus: ' + status + ' (' + (statusNames[status] || '?') + ')');
+          if (status === 2) setStatus('✅ DLS WebSocket ONLINE — type a message!', 'connected');
+          if (status === 4) setStatus('❌ DLS WebSocket FAILED', 'error');
+        });
+
+        // Monitor activity$ (diagnostic only)
+        adapters.directLine.activity$.subscribe(function (activity) {
+          var dir = activity.from && activity.from.role === 'bot' ? '🤖 BOT' : '👤 USER';
+          log('📨 ' + dir + ': type=' + activity.type + ' text="' + (activity.text || '(none)') + '"');
+        });
+
+        // === RENDER WEB CHAT — exact official pattern ===
+        log('Step 3: Rendering Web Chat with {...adapters} spread...');
+        window.WebChat.renderWebChat(
+          Object.assign({}, adapters, {
+            styleOptions: {
+              botAvatarInitials: 'DLS',
+              userAvatarInitials: 'You',
+              hideUploadButton: true
+            }
+          }),
+          document.getElementById('webchat')
+        );
+
+        log('Step 3 ✅ Web Chat rendered. Type "Hello" in the chat box below.');
+        log('');
+        log('If you see 📡 connectionStatus: 2 (Online) → WebSocket connected');
+        log('If you type and see 📨 USER: type=message → your message was sent');
+        log('If you see 📨 BOT: type=message → the bot responded!');
+        log('If nothing happens after typing → DLS WebSocket is NOT connected');
+
+      } catch (err) {
+        log('❌ ERROR: ' + err.message);
+        log(err.stack || '');
+        setStatus('❌ Error: ' + err.message, 'error');
+      }
+    })();
+  </script>
+</body>
+</html>

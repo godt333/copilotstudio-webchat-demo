@@ -94,12 +94,20 @@ router.get('/token', async (req: Request, res: Response, next: NextFunction) => 
     
     const token = await getSpeechToken();
     
+    // Extract custom domain hostname for DLS SDK (e.g. 'thr505-dls-speech.cognitiveservices.azure.com')
+    // When a Speech resource has a custom domain, the regional endpoint doesn't work for DLS.
+    const customDomainHost = config.speech.resourceEndpoint
+      ? new URL(config.speech.resourceEndpoint).hostname
+      : undefined;
+
     const response = {
       token,
       region: config.speech.region,
       expiresIn: config.tokens.speechTokenExpiresInSeconds,
       locale: config.speech.defaultLocale,
       voice: config.speech.defaultVoice,
+      speechKey: config.speech.key || undefined,
+      customDomainHost,
     };
     
     console.log(`✅ Speech token issued for region: ${config.speech.region}`);

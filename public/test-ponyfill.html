@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html><body>
+<h2>Ponyfill Test</h2>
+<div id="result">Testing...</div>
+<button id="startMic" disabled>Start Microphone</button>
+<div id="log" style="font-family:monospace; white-space:pre-wrap; font-size:12px;"></div>
+<script type="module">
+  const log = (msg) => {
+    document.getElementById('log').textContent += msg + '\n';
+    console.log(msg);
+  };
+  
+  try {
+    // Fetch real credentials
+    log('Fetching credentials...');
+    const creds = await fetch('/api/speechservices/ponyfillKey?locale=en-US&voice=en-US-JennyNeural').then(r => r.json());
+    log('Got token (len=' + creds.token.length + '), region=' + creds.region);
+    
+    // Import ponyfill exactly like the hook does
+    const mod = await import('/node_modules/.vite/deps/web-speech-cognitive-services_lib_SpeechServices.js?v=1f8512ec');
+    const SpeechServicesModule = mod.default;
+    const createSpeechServicesPonyfill = typeof SpeechServicesModule === 'function'
+      ? SpeechServicesModule
+      : SpeechServicesModule.default;
+    log('createSpeechServicesPonyfill type: ' + typeof createSpeechServicesPonyfill);
+    
+    // Create ponyfill with real credentials
+    const ponyfill = await createSpeechServicesPonyfill({
+      credentials: {
+        authorizationToken: creds.token,
+        region: creds.region,
+      },
+      speechSynthesisOutputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+      speechSynthesisVoiceName: 'en-US-JennyNeural',
+    });
+    
+    log('Ponyfill keys: ' + Object.keys(ponyfill).join(', '));
+    log('SpeechRecognition: ' + typeof ponyfill.SpeechRecognition);
+    log('SpeechGrammarList: ' + typeof ponyfill.SpeechGrammarList);
+    log('speechSynthesis: ' + typeof ponyfill.speechSynthesis);
+    log('SpeechSynthesisUtterance: ' + typeof ponyfill.SpeechSynthesisUtterance);
+    
+    // Create factory like the hook does
+    const factory = () => ({
+      SpeechGrammarList: ponyfill.SpeechGrammarList,
+      SpeechRecognition: ponyfill.SpeechRecognition,
+      speechSynthesis: ponyfill.speechSynthesis,
+      SpeechSynthesisUtterance: ponyfill.SpeechSynthesisUtterance,
+    });
+    
+    // Test creating SpeechRecognition instance
+    const factoryResult = factory();
+    log('Factory result keys: ' + Object.keys(factoryResult).join(', '));
+    
+    try {
+      const recog = new factoryResult.SpeechRecognition();
+      log('SpeechRecognition instance created: ' + typeof recog);
+      log('recog.start: ' + typeof recog.start);
+      log('recog.stop: ' + typeof recog.stop);
+      log('recog.addEventListener: ' + typeof recog.addEventListener);
+      
+      // Test starting recognition (mic access)
+      const btn = document.getElementById('startMic');
+      btn.disabled = false;
+      btn.onclick = () => {
+        log('Calling recog.start()...');
+        try {
+          recog.onstart = () => log('EVENT: onstart');
+          recog.onerror = (e) => log('EVENT: onerror - ' + JSON.stringify({error: e.error, message: e.message}));
+          recog.onresult = (e) => log('EVENT: onresult - ' + e.results[0][0].transcript);
+          recog.onend = () => log('EVENT: onend');
+          recog.start();
+          log('recog.start() called successfully');
+        } catch (e) {
+          log('ERROR calling start(): ' + e.message);
+        }
+      };
+    } catch (e) {
+      log('ERROR creating SpeechRecognition instance: ' + e.message);
+    }
+    
+    // Test TTS
+    try {
+      const utterance = new factoryResult.SpeechSynthesisUtterance('Hello, this is a test.');
+      log('SpeechSynthesisUtterance created: ' + typeof utterance);
+      log('Attempting TTS speak...');
+      factoryResult.speechSynthesis.speak(utterance);
+      log('TTS speak() called');
+    } catch (e) {
+      log('ERROR with TTS: ' + e.message);
+    }
+    
+    document.getElementById('result').textContent = 'Ponyfill loaded successfully. Check log below.';
+  } catch (e) {
+    log('FATAL ERROR: ' + e.message + '\n' + e.stack);
+    document.getElementById('result').textContent = 'Error: ' + e.message;
+  }
+</script>
+</body></html>
